@@ -1,0 +1,51 @@
+#! /usr/bin/env python
+
+import re
+import sys
+import click 
+from redmine import Redmine
+from config import *
+from utils import *
+
+# Don't print warnings about equalit.ie's unverified cert
+import requests
+requests.packages.urllib3.disable_warnings()
+
+REDMINE = Redmine(REDMINE_LOCATION,
+  username=REDMINE_USERNAME, password=REDMINE_PASSWORD,
+  requests={'verify': False}, raise_attr_exception=False)
+
+PROJECTS = { name: REDMINE.project.get(REDMINE_PROJECTS[name]) for name in REDMINE_PROJECTS.keys() }
+
+@click.group()
+def cmdmine():
+  pass
+
+
+@cmdmine.command()
+@click.option('--project', '-p', default='.',
+  help='Pattern to match the name of a project ("." matches anything)')
+@click.option('--limit', '-l', default=20,
+  help='Limit the number of issues that will be reported')
+@click.option('--offset', '-o', default=0,
+  help='Offset from the first retrieved issue to report')
+def issues(project, limit, offset):
+  try:
+    pattern = re.compile(project)
+  except Exception:
+    click.echo(project + ' is not a valid pattern.')
+    click.echo('See https://docs.python.org/2/howto/regex.html#matching-characters ' +
+      'for pattern information')
+    sys.exit(1)
+  matched_projects = [PROJECTS[name] for name in PROJECTS.keys() if pattern.match(name) is not None]
+  issues = []
+  for proj in matched_projects:
+    for issue in proj.issues:
+      issues.append(issue)
+  click.echo('ID  Subject  Assigned to')
+  for issue in issues[offset : offset + limit + 1]:
+    click.echo(u' -  '.join([str(issue.id), issue.subject, str(issue.assigned_to)]))
+
+
+if __name__ == '__main__':
+  cmdmine()
