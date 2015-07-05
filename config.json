@@ -1,0 +1,36 @@
+{
+  "redmine-location": "",
+  "redmine-username": "",
+  "redmine-password": "",
+  "redmine-projects": {
+  },
+  "activities": {
+    "design": 8,
+    "development": 9,
+    "dev": 9,
+    "maintenance": 10,
+    "maint": 10,
+    "progress": 11,
+    "communications": 12,
+    "comms": 12
+  },
+  "trackers": {
+    "bug": 1,
+    "feature": 2,
+    "support": 3,
+    "task": 4
+  },
+  "default-tracker": "task",
+  "priorities": {
+    "low": 3,
+    "normal": 4,
+    "high": 5,
+    "urgent": 6,
+    "higher": 6,
+    "immediate": 7,
+    "highest": 7
+  },
+  "default-priority": "normal",
+  "assignee-me": 18,
+  "new-task-status": 1
+}
