@@ -3,26 +3,47 @@
 import os
 import re
 import sys
+import json
 import pickle
 import datetime
 import click 
 from redmine import Redmine
-from config import *
 
 # Don't print warnings about unverified certs
 import requests
 requests.packages.urllib3.disable_warnings()
 
-MACROS_FILE = 'macros.dat'
+MACROS_FILE = os.sep.join([os.environ['HOME'], '.cmdmine', 'macros.dat'])
 ACTIVITY_FILE = os.sep.join([os.environ['HOME'], '.cmdmine', 'activities.log'])
+
+# Load the program's configuration from a JSON file
+# The config filename is stored for future convenience
+CONFIG_FILE = os.sep.join([os.environ['HOME'], '.cmdmine', 'config.json'])
+config = load_configuration()
+
+
+def load_configuration():
+  '''Load the program's configuration'''
+  if not os.path.isfile(CONFIG_FILE):
+    click.echo('No configuration file found. Have you run the install.sh script?')
+    sys.exit(1)
+  try:
+    cf = open(CONFIG_FILE, 'r')
+    parsed = json.load(cf)
+    cf.close()
+    return parsed
+  except Exception:
+    click.echo('Could not successfully decode the configuration file.')
+    click.echo('Please check that it is correctly formatted.')
+    sys.exit(1)
 
 
 def redmine_auth():
   '''Authenticate with and return a configured redmine object'''
   click.echo('Authenticating with redmine.')
   try:
-    REDMINE = Redmine(REDMINE_LOCATION,
-      username=REDMINE_USERNAME, password=REDMINE_PASSWORD,
+    REDMINE = Redmine(config['redmine-location'],
+      username=config['redmine-username'], password=config['redmine-password'],
       requests={'verify': False}, raise_attr_exception=False)
   except Exception:
     click.echo('Failed to authenticate.\nQuitting.')
@@ -34,7 +55,7 @@ def redmine_auth():
 def build_projects(REDMINE):
   '''Collect information about projects aliased in the config'''
   click.echo('Collecting project information.')
-  PROJECTS = { name: REDMINE.project.get(REDMINE_PROJECTS[name]) for name in REDMINE_PROJECTS.keys() }
+  PROJECTS = { name: REDMINE.project.get(config['redmine-projects'][name]) for name in config['redmine-projects'].keys() }
   click.echo('Done.')
   return PROJECTS
 
@@ -152,10 +173,10 @@ def issues(project, limit, offset):
 
 
 @cmdmine.command()
-@cmdmine.argument('project', type=click.Choice(REDMINE_PROJECTS))
+@cmdmine.argument('project', type=click.Choice(config['redmine-projects']))
 @cmdmine.option('--subject', '-s' type=str,
   help='A descriptive subject for the new task')
-@cmdmine.option('--priority', '-p', type=click.Choice(PRIORITIES), default=DEFAULT_PRIORITY,
+@cmdmine.option('--priority', '-p', type=click.Choice(config['priorities']), default=config['default-priority'],
   help='The name of the priority to assign to the new task')
 @cmdmine.option('--due', '-d', type=str,
   help='The due date of the task. Defaults to none. Format is YYYY-MM-DD')
@@ -163,7 +184,7 @@ def issues(project, limit, offset):
   help='The estimated number of hours required to complete the task')
 @cmdmine.option('--description', '-D', type=str, default='No description provided.',
   help='A description to explain the task')
-@cmdmine.option('--tracker', '-T', type=str, default=DEFAULT_TRACKER,
+@cmdmine.option('--tracker', '-T', type=str, default=config['default-tracker'],
   help='The name of the tracker to use for the task')
 def new_task(project, subject, priority, due, time, description, tracker):
   if subject is None:
@@ -176,15 +197,15 @@ def new_task(project, subject, priority, due, time, description, tracker):
   except ValueError:
     click.echo(due + ' is not a valid date. The format is YYYY-MM-DD')
     return
-  priority = PRIORITIES[priority]
+  priority = config['priorities'][priority]
   tracker_name = tracker
-  tracker = TRACKERS[tracker]
-  project = REDMINE_PROJECTS[project]
+  tracker = config['trackers'][tracker]
+  project = config['redmine-projects'][project]
   today = datetime.date.today().strftime('%Y-%m-%d')
   REDMINE = readmine_auth()
   issue = REDMINE.issue.create(
     project_id=project, subject=subject, tracker_id=tracker, description=description,
-    status_id=NEW_TASK_STATUS, priority_id=priority, assigned_to_id=ASSIGNEE_ME,
+    status_id=config['new-task-status'], priority_id=priority, assigned_to_id=config['assignee-me'],
     start_date=today, due_date=due, estimated_hours=time)
   issue.save()
   click.echo('Created new {0} in project {1}.\n{2}\nDue date: {3}, Estimated time (hours): {4}.'.format(
@@ -192,7 +213,7 @@ def new_task(project, subject, priority, due, time, description, tracker):
 
 
 @cmdmine.command()
-@click.argument('activity', type=click.Choice(ACTIVITIES))
+@click.argument('activity', type=click.Choice(config['activities']))
 @click.option('--project', '-p',
   help='The shorthand name of the project to update')
 @click.option('--issue', '-i', type=int,
@@ -222,7 +243,7 @@ def log(activity, project, issue, macro, hours, minutes, date, comments):
   time_spent = hours + (minutes / 60.0)
   time_entry = REDMINE.time_entry.create(
     issue_id=issue, spent_on=date, hours=time_spent,
-    activity_id=ACTIVITIES[activity], comments=str(comments))
+    activity_id=config['activities'][activity], comments=str(comments))
   time_entry.save()
   log_activity(date, time_spent, project, issue, activity, comments)
   click.echo('Logged {0} hours of work on issue {1}, project {2} at {3}.'.format(
