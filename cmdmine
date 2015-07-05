@@ -4,6 +4,7 @@ import os
 import re
 import sys
 import pickle
+import datetime
 import click 
 from redmine import Redmine
 from config import *
@@ -23,6 +24,18 @@ PROJECTS = { name: REDMINE.project.get(REDMINE_PROJECTS[name]) for name in REDMI
 @click.group()
 def cmdmine():
   pass
+
+
+def get_issue_info(macro_name):
+  '''Returns the project name and issue ID for an issue assigned to a macro'''
+  if not os.path.isfile(MACROS_FILE):
+    return None, None
+  macro_file = open(MACROS_FILE, 'rb')
+  macros = pickle.load(macro_file)
+  macro_file.close()
+  if macro_name not in macros.keys():
+    return None, None
+  return macros[macro_name]['project_name'], macros[macro_name]['issue_id']
 
 
 @cmdmine.command()
@@ -62,7 +75,7 @@ def macros():
 
 
 @cmdmine.command()
-@click.option('--project', '-p', default='.*',
+@click.option('--project', '-p',
   help='The shorthand name of the project to search')
 @click.option('--limit', '-l', default=20,
   help='Limit the number of issues that will be reported')
@@ -78,6 +91,46 @@ def issues(project, limit, offset):
   for issue in issues[offset : offset + limit + 1]:
     click.echo(u' - '.join([str(issue.id), issue.subject, str(issue.assigned_to)]))
 
+
+@cmdmine.command()
+@click.argument('activity', type=click.Choice(ACTIVITIES))
+@click.option('--project', '-p',
+  help='The shorthand name of the project to update')
+@click.option('--issue', '-i', type=int,
+  help='The ID of the issue to reference')
+@click.option('--macro', '-m', type=str, default='',
+  help='A macro identifier. If provided, the project name and issue ID fields are not required')
+@click.option('--hours', '-H', type=int,
+  help='The number of hours worked on the issue')
+@click.option('--minutes', '-M', type=int,
+  help='The number of minutes worked on the issue')
+@click.option('--date', '-d', type=str,
+  help='The date the work was done, formatted YYYY-MM-DD')
+@click.option('--comments', '-c', type=str,
+  help='Commentary about the nature of the work done')
+def log(activity, project, issue, macro, hours, minutes, date, comments):
+  if len(macro) > 0:
+    project, issue = get_issue_info(macro)
+  if (not project) or (not issue): # Either are empty or None
+    click.echo('No information available about the issue specified')
+    return
+  if hours is None and minutes is None:
+    click.echo('You must enter some number of hours (-H) and/or minutes (-M) to be logged')
+    return
+  if date is None:
+    date = datetime.date.today().strftime('%Y-%m-%d')
+  time_spent = hours + (minutes / 60.0)
+  time_entry = REDMINE.time_entry.create(
+    issue_id=issue, spent_on=date, hours=time_spent,
+    activity_id=ACTIVITIES[activity], comments=str(comments))
+  print activity
+  print project
+  print issue
+  print macro
+  print hours
+  print minutes
+  print date
+  print comments
 
 if __name__ == '__main__':
   cmdmine()
