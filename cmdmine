@@ -14,6 +14,7 @@ import requests
 requests.packages.urllib3.disable_warnings()
 
 MACROS_FILE = 'macros.dat'
+ACTIVITY_FILE = 'activities.log'
 
 REDMINE = Redmine(REDMINE_LOCATION,
   username=REDMINE_USERNAME, password=REDMINE_PASSWORD,
@@ -26,6 +27,14 @@ def cmdmine():
   pass
 
 
+def log_activity(date, time_spent, project, issue, activity, comments):
+  '''Write an activity entry to a log file for local reference'''
+  f = open(ACTIVITY_FILE, 'w')
+  f.write('{0}@@{1} hours@@{2} issue #{3}@@{4}\n'.format(
+    date, time_spent, project, issue, activity))
+  f.write(str(comments) + '\n\n')
+  f.close()
+
 def get_issue_info(macro_name):
   '''Returns the project name and issue ID for an issue assigned to a macro'''
   if not os.path.isfile(MACROS_FILE):
@@ -37,6 +46,32 @@ def get_issue_info(macro_name):
     return None, None
   return macros[macro_name]['project_name'], macros[macro_name]['issue_id']
 
+
+def show_macros():
+  '''List all currently registered macros'''
+  if not os.path.isfile(MACROS_FILE):
+    click.echo('You currently have no macros registered.')
+    return
+  macro_file = open(MACROS_FILE, 'rb')
+  macros = pickle.load(macro_file)
+  macro_file.close()
+  click.echo('Macro\tProject\t\tIssue ID')
+  for macro_name in macros.keys():
+    click.echo('{0}\t{1}\t\t{2}'.format(
+      macro_name, macros[macro_name]['project_name'], macros[macro_name]['issue_id']))
+
+
+def show_logs():
+  '''List all time log entries'''
+  if not os.path.isfile(ACTIVITY_FILE):
+    click.echo('No activities logged yet.')
+    return
+  log_file = open(ACTIVITY_FILE, 'r')
+  click.echo('Date\tTime spent\tProject\tActivity')
+  for line in log_file:
+    line = line.replace('@@', '\t').replace('\n', '', 1)
+    click.echo(line)
+  log_file.close()
 
 @cmdmine.command()
 @click.option('--issue', '-i', type=int,
@@ -59,19 +94,13 @@ def macro(issue, project, macro_name):
     macro_name, project, issue))
   click.echo('You now have {0} macros registered.'.format(len(macros.keys())))
 
-
 @cmdmine.command()
-def macros():
-  if not os.path.isfile(MACROS_FILE):
-    click.echo('You currently have no macros registered.')
-    return
-  macro_file = open(MACROS_FILE, 'rb')
-  macros = pickle.load(macro_file)
-  macro_file.close()
-  click.echo('Macro\tProject\t\tIssue ID')
-  for macro_name in macros.keys():
-    click.echo('{0}\t{1}\t\t{2}'.format(
-      macro_name, macros[macro_name]['project_name'], macros[macro_name]['issue_id']))
+@click.argument('what', type=click.Choice(['macros', 'logs']))
+def show(what):
+  if what == 'macros':
+    show_macros()
+  else:
+    show_logs()
 
 
 @cmdmine.command()
@@ -123,14 +152,12 @@ def log(activity, project, issue, macro, hours, minutes, date, comments):
   time_entry = REDMINE.time_entry.create(
     issue_id=issue, spent_on=date, hours=time_spent,
     activity_id=ACTIVITIES[activity], comments=str(comments))
-  print activity
-  print project
-  print issue
-  print macro
-  print hours
-  print minutes
-  print date
-  print comments
+  time_entry.save()
+  log_activity(date, time_spent, project, issue, activity, comments)
+  click.echo('Logged {0} hours of work on issue {1}, project {2} at {3}'.format(
+    time_spent, issue_id, project, date))
+  click.echo('Comment: ' + str(comments))
+
 
 if __name__ == '__main__':
   cmdmine()
