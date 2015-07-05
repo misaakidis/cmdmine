@@ -26,3 +26,37 @@ ACTIVITIES = {
   'progress': 11,
   'communications': 12
 }
+
+# A mapping of tracker names to their identifiers
+# You can create an alias for a tracker name (or provide whatever name you want)
+# Just as you can with ACTIVITIES
+TRACKERS = {
+  'bug': 1,
+  'feature': 2,
+  'support': 3,
+  'task': 4
+}
+
+# The default tracker to use for new tasks
+# Must be one of the keys (words on the LEFT of ':') in TRACKERS
+DEFAULT_TRACKER = 'task'
+
+# A mapping of priority names to their identifiers
+# Aliases and names work just as with TRACKERS and ACTIVITIES
+PRIORITIES = {
+  'low': 3,
+  'normal': 4,
+  'high': 5,
+  'urgent': 6,
+  'immediate': 7
+}
+
+# The default priority to use for new tasks
+# Must be one of the keys (words on the LEFT of ':') in PRIORITIES
+DEFAULT_PRIORITY = 'normal'
+
+# The '<< me >>' identifier to assign yourself a task
+ASSIGNEE_ME = 18
+
+# The identifier of the default status ot use for new tasks
+NEW_TASK_STATUS = 1

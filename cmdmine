@@ -144,6 +144,45 @@ def issues(project, limit, offset):
     click.echo(u'{0} - {1} {2}'.format(
       str(issue.id), (issue.subject + ' ').ljust(longest_subject_length, '-'), str(issue.assigned_to)))
 
+@cmdmine.command()
+@cmdmine.argument('project', type=click.Choice(REDMINE_PROJECTS))
+@cmdmine.option('--subject', '-s' type=str,
+  help='A descriptive subject for the new task')
+@cmdmine.option('--priority', '-p', type=click.Choice(PRIORITIES), default=DEFAULT_PRIORITY,
+  help='The name of the priority to assign to the new task')
+@cmdmine.option('--due', '-d', type=str,
+  help='The due date of the task. Defaults to none. Format is YYYY-MM-DD')
+@cmdmine.option('--time', '-t', type=int,
+  help='The estimated number of hours required to complete the task')
+@cmdmine.option('--description', '-D', type=str, default='No description provided.',
+  help='A description to explain the task')
+@cmdmine.option('--tracker', '-T', type=str, default=DEFAULT_TRACKER,
+  help='The name of the tracker to use for the task')
+def new_task(project, subject, priority, due, time, description, tracker):
+  if subject is None:
+    click.echo('No subject was provided for the task. Use the --subject or -s flag.')
+    return
+  due_date_str = str(due)
+  try:
+    if due is not None:
+      due = datetime.strptime(due, '%Y-%m-%d')
+  except ValueError:
+    click.echo(due + ' is not a valid date. The format is YYYY-MM-DD')
+    return
+  priority = PRIORITIES[priority]
+  tracker_name = tracker
+  tracker = TRACKERS[tracker]
+  project = REDMINE_PROJECTS[project]
+  today = datetime.date.today().strftime('%Y-%m-%d')
+  REDMINE = readmine_auth()
+  issue = REDMINE.issue.create(
+    project_id=project, subject=subject, tracker_id=tracker, description=description,
+    status_id=NEW_TASK_STATUS, priority_id=priority, assigned_to_id=ASSIGNEE_ME,
+    start_date=today, due_date=due, estimated_hours=time)
+  issue.save()
+  click.echo('Created new {0} in project {1}.\n{2}\nDue date: {3}, Estimated time (hours): {4}.'.format(
+    tracker_name, project, subject, due_date_str, str(time)))
+
 
 @cmdmine.command()
 @click.argument('activity', type=click.Choice(ACTIVITIES))
