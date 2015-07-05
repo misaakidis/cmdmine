@@ -9,18 +9,26 @@ import click
 from redmine import Redmine
 from config import *
 
-# Don't print warnings about equalit.ie's unverified cert
+# Don't print warnings about unverified certs
 import requests
 requests.packages.urllib3.disable_warnings()
 
 MACROS_FILE = 'macros.dat'
 ACTIVITY_FILE = 'activities.log'
 
-REDMINE = Redmine(REDMINE_LOCATION,
-  username=REDMINE_USERNAME, password=REDMINE_PASSWORD,
-  requests={'verify': False}, raise_attr_exception=False)
+click.echo('Authenticating with redmine.')
+try:
+  REDMINE = Redmine(REDMINE_LOCATION,
+    username=REDMINE_USERNAME, password=REDMINE_PASSWORD,
+    requests={'verify': False}, raise_attr_exception=False)
+except Exception:
+  click.echo('Failed to authenticate.\nQuitting.')
+  sys.exit(1)
+click.echo('Authenticated.')
 
+click.echo('Collecting project information.')
 PROJECTS = { name: REDMINE.project.get(REDMINE_PROJECTS[name]) for name in REDMINE_PROJECTS.keys() }
+click.echo('Done.')
 
 @click.group()
 def cmdmine():
@@ -67,7 +75,6 @@ def show_logs():
     click.echo('No activities logged yet.')
     return
   log_file = open(ACTIVITY_FILE, 'r')
-  click.echo('Date\tTime spent\tProject\tActivity')
   for line in log_file:
     line = line.replace('@@', '\t').replace('\n', '', 1)
     click.echo(line)
@@ -90,7 +97,7 @@ def macro(issue, project, macro_name):
   macros[macro_name] = {'issue_id': issue, 'project_name': project}
   pickle.dump(macros, macro_file)
   macro_file.close()
-  click.echo('Registered macro {0} for project {1} issue {2}'.format(
+  click.echo('Registered macro {0} for project {1} issue {2}.'.format(
     macro_name, project, issue))
   click.echo('You now have {0} macros registered.'.format(len(macros.keys())))
 
@@ -113,12 +120,21 @@ def show(what):
 def issues(project, limit, offset):
   matched_projects = [PROJECTS[name] for name in PROJECTS.keys() if project == name]
   issues = []
+  longest_subject_length = 0
+  click.echo('Collecting issue information.')
   for proj in matched_projects:
     for issue in proj.issues:
       issues.append(issue)
-  click.echo('ID  Subject  Assigned to')
+  # Find the length of the longest subject name so we can nicely format the output
   for issue in issues[offset : offset + limit + 1]:
-    click.echo(u' - '.join([str(issue.id), issue.subject, str(issue.assigned_to)]))
+    subject_length = len(issue.subject)
+    if subject_length > longest_subject_length:
+      longest_subject_length = subject_length
+  longest_subject_length += 1
+  click.echo('ID' + (' ' * 5) + 'Subject'.ljust(longest_subject_length) + 'Assigned to')
+  for issue in issues[offset : offset + limit + 1]:
+    click.echo(u'{0} - {1} {2}'.format(
+      str(issue.id), (issue.subject + ' ').ljust(longest_subject_length, '-'), str(issue.assigned_to)))
 
 
 @cmdmine.command()
@@ -141,10 +157,10 @@ def log(activity, project, issue, macro, hours, minutes, date, comments):
   if len(macro) > 0:
     project, issue = get_issue_info(macro)
   if (not project) or (not issue): # Either are empty or None
-    click.echo('No information available about the issue specified')
+    click.echo('No information available about the issue specified.')
     return
   if hours is None and minutes is None:
-    click.echo('You must enter some number of hours (-H) and/or minutes (-M) to be logged')
+    click.echo('You must enter some number of hours (-H) and/or minutes (-M) to be logged.')
     return
   if date is None:
     date = datetime.date.today().strftime('%Y-%m-%d')
@@ -154,7 +170,7 @@ def log(activity, project, issue, macro, hours, minutes, date, comments):
     activity_id=ACTIVITIES[activity], comments=str(comments))
   time_entry.save()
   log_activity(date, time_spent, project, issue, activity, comments)
-  click.echo('Logged {0} hours of work on issue {1}, project {2} at {3}'.format(
+  click.echo('Logged {0} hours of work on issue {1}, project {2} at {3}.'.format(
     time_spent, issue_id, project, date))
   click.echo('Comment: ' + str(comments))
 
