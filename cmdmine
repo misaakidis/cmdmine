@@ -29,7 +29,7 @@ def cmdmine():
 
 def log_activity(date, time_spent, project, issue, activity, comments):
   '''Write an activity entry to a log file for local reference'''
-  f = open(ACTIVITY_FILE, 'w')
+  f = open(ACTIVITY_FILE, 'a')
   f.write('{0}@@{1} hours@@{2} issue #{3}@@{4}\n'.format(
     date, time_spent, project, issue, activity))
   f.write(str(comments) + '\n\n')
