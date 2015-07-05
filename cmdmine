@@ -14,7 +14,8 @@ import requests
 requests.packages.urllib3.disable_warnings()
 
 MACROS_FILE = 'macros.dat'
-ACTIVITY_FILE = 'activities.log'
+ACTIVITY_FILE = os.sep.join([os.environ['HOME'], '.cmdmine', 'activities.log'])
+
 
 def redmine_auth():
   '''Authenticate with and return a configured redmine object'''
@@ -29,16 +30,13 @@ def redmine_auth():
   click.echo('Authenticated.')
   return REDMINE
 
+
 def build_projects(REDMINE):
   '''Collect information about projects aliased in the config'''
   click.echo('Collecting project information.')
   PROJECTS = { name: REDMINE.project.get(REDMINE_PROJECTS[name]) for name in REDMINE_PROJECTS.keys() }
   click.echo('Done.')
   return PROJECTS
-  
-@click.group()
-def cmdmine():
-  pass
 
 
 def log_activity(date, time_spent, project, issue, activity, comments):
@@ -48,6 +46,7 @@ def log_activity(date, time_spent, project, issue, activity, comments):
     date, time_spent, project, issue, activity))
   f.write(str(comments) + '\n\n')
   f.close()
+
 
 def get_issue_info(macro_name):
   '''Returns the project name and issue ID for an issue assigned to a macro'''
@@ -86,6 +85,12 @@ def show_logs():
     click.echo(line)
   log_file.close()
 
+
+@click.group()
+def cmdmine():
+  pass
+
+
 @cmdmine.command()
 @click.option('--issue', '-i', type=int,
   help='The ID of the issue to reference')
@@ -106,6 +111,7 @@ def macro(issue, project, macro_name):
   click.echo('Registered macro {0} for project {1} issue {2}.'.format(
     macro_name, project, issue))
   click.echo('You now have {0} macros registered.'.format(len(macros.keys())))
+
 
 @cmdmine.command()
 @click.argument('what', type=click.Choice(['macros', 'logs']))
@@ -143,6 +149,7 @@ def issues(project, limit, offset):
   for issue in issues[offset : offset + limit + 1]:
     click.echo(u'{0} - {1} {2}'.format(
       str(issue.id), (issue.subject + ' ').ljust(longest_subject_length, '-'), str(issue.assigned_to)))
+
 
 @cmdmine.command()
 @cmdmine.argument('project', type=click.Choice(REDMINE_PROJECTS))
