@@ -16,20 +16,26 @@ requests.packages.urllib3.disable_warnings()
 MACROS_FILE = 'macros.dat'
 ACTIVITY_FILE = 'activities.log'
 
-click.echo('Authenticating with redmine.')
-try:
-  REDMINE = Redmine(REDMINE_LOCATION,
-    username=REDMINE_USERNAME, password=REDMINE_PASSWORD,
-    requests={'verify': False}, raise_attr_exception=False)
-except Exception:
-  click.echo('Failed to authenticate.\nQuitting.')
-  sys.exit(1)
-click.echo('Authenticated.')
+def redmine_auth():
+  '''Authenticate with and return a configured redmine object'''
+  click.echo('Authenticating with redmine.')
+  try:
+    REDMINE = Redmine(REDMINE_LOCATION,
+      username=REDMINE_USERNAME, password=REDMINE_PASSWORD,
+      requests={'verify': False}, raise_attr_exception=False)
+  except Exception:
+    click.echo('Failed to authenticate.\nQuitting.')
+    sys.exit(1)
+  click.echo('Authenticated.')
+  return REDMINE
 
-click.echo('Collecting project information.')
-PROJECTS = { name: REDMINE.project.get(REDMINE_PROJECTS[name]) for name in REDMINE_PROJECTS.keys() }
-click.echo('Done.')
-
+def build_projects(REDMINE):
+  '''Collect information about projects aliased in the config'''
+  click.echo('Collecting project information.')
+  PROJECTS = { name: REDMINE.project.get(REDMINE_PROJECTS[name]) for name in REDMINE_PROJECTS.keys() }
+  click.echo('Done.')
+  return PROJECTS
+  
 @click.group()
 def cmdmine():
   pass
@@ -118,6 +124,8 @@ def show(what):
 @click.option('--offset', '-o', default=0,
   help='Offset from the first retrieved issue to report')
 def issues(project, limit, offset):
+  REDMINE = redmine_auth()
+  PROJECTS = build_projects(REDMINE)
   matched_projects = [PROJECTS[name] for name in PROJECTS.keys() if project == name]
   issues = []
   longest_subject_length = 0
@@ -131,7 +139,7 @@ def issues(project, limit, offset):
     if subject_length > longest_subject_length:
       longest_subject_length = subject_length
   longest_subject_length += 1
-  click.echo('ID' + (' ' * 5) + 'Subject'.ljust(longest_subject_length) + 'Assigned to')
+  click.echo('ID' + (' ' * 5) + 'Subject'.ljust(longest_subject_length) + ' Assigned to')
   for issue in issues[offset : offset + limit + 1]:
     click.echo(u'{0} - {1} {2}'.format(
       str(issue.id), (issue.subject + ' ').ljust(longest_subject_length, '-'), str(issue.assigned_to)))
@@ -164,6 +172,7 @@ def log(activity, project, issue, macro, hours, minutes, date, comments):
     return
   if date is None:
     date = datetime.date.today().strftime('%Y-%m-%d')
+  REDMINE = redmine_auth()
   time_spent = hours + (minutes / 60.0)
   time_entry = REDMINE.time_entry.create(
     issue_id=issue, spent_on=date, hours=time_spent,
