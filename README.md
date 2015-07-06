@@ -1,6 +1,34 @@
 # cmdmine
 A simple command-line interface to enough Redmine functionality to easily log work activity
 
+## Installation
+
+The first thing to do to install cmdmine is to clone its repository to your computer and
+edit the configuration file.  The `Configuration` section of this document explains the
+significance of each setting.  Note that, for project, the key you provide can be anything.
+If you have a project called `my_awesome_vacation`, you can add an entry to `redmine-projects`
+like the following:
+
+    "vacation": "my_awesome_vacation"
+
+Also note that the project name that appears on the right side of the colon (':') can be
+obtained from the URL of the project page on redmine.  For example,
+
+    https://www.redmine.mysite.com/redmine/project/my_awesome_vacation
+
+After you've finished editing the configuration file, providing crucial information such
+as the URL to where your redmine instance is located as well as your username and password,
+you will have to install the Python libraries that cmdmine depends on to work.
+
+    sudo pip install python-redmine click
+
+Finally, you can run the install script to automatically install cmdmine system-wide. This must be done
+as root.
+
+    sudo sh install.sh
+
+With that, you're done! You can now start using cmdmine like a standard Unix utility.
+
 ## Usage
 
 cmdmine is designed to make keeping redmine updated with your activity just as easy as
