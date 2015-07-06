@@ -79,7 +79,8 @@ number of hours yourself.
 
 The default behavior is to log time on the current day.  In the case that you would like to
 log time for another date, the date (`-d` or `--date`) flag can be used. The format for this
-option is YYYY-MM-DD.
+option is YYYY-MM-DD.  Likewise, the log file will have the current time logged with a 24-hour
+time format of HH:MM.  You can provide an alternative time with the time (`-t` or `--time`) option.
 
 `log` automatically updates a log file with the activity you enter, so that you can retrieve
 a list of logged work without tracking it down on redmine.  More about this in `show`.
