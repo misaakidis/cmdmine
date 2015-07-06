@@ -60,12 +60,13 @@ def build_projects(REDMINE):
   return PROJECTS
 
 
-def log_activity(date, time_spent, project, issue, activity, comments):
+def log_activity(date, time_spent, project, issue, isubject, activity, comments):
   '''Write an activity entry to a log file for local reference'''
   f = open(ACTIVITY_FILE, 'a')
   f.write('{0}@@{1} hours@@{2} issue #{3}@@{4}\n'.format(
     date, time_spent, project, issue, activity))
-  f.write(str(comments) + '\n\n')
+  f.write('Issue: ' + str(isubject) + '\n')
+  f.write('Comment: ' + str(comments) + '\n\n')
   f.close()
 
 
@@ -108,7 +109,7 @@ def show_logs():
     return
   log_file = open(ACTIVITY_FILE, 'r')
   for line in log_file:
-    line = line.replace('@@', '\t').replace('\n', '', 1)
+    line = line.replace('@@', ' - ').replace('\n', '', 1)
     click.echo(line)
   log_file.close()
 
@@ -264,7 +265,8 @@ def log(activity, project, issue, macro, hours, minutes, date, comments):
     time_entry.save()
   except Exception:
     pass # This works but for some reason throws an exception like saving a task does. Dunno why.
-  log_activity(date, time_spent, project, issue, activity, comments)
+  issue_subject = REDMINE.issue.get(issue).subject
+  log_activity(date, time_spent, project, issue, issue_subject, activity, comments)
   click.echo('Logged {0} hours of work on issue {1}, project {2} at {3}.'.format(
     time_spent, issue, project, date))
   click.echo('Comment: ' + str(comments))
