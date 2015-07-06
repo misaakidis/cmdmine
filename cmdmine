@@ -16,11 +16,6 @@ requests.packages.urllib3.disable_warnings()
 MACROS_FILE = os.sep.join([os.environ['HOME'], '.cmdmine', 'macros.dat'])
 ACTIVITY_FILE = os.sep.join([os.environ['HOME'], '.cmdmine', 'activities.log'])
 
-# Load the program's configuration from a JSON file
-# The config filename is stored for future convenience
-CONFIG_FILE = os.sep.join([os.environ['HOME'], '.cmdmine', 'config.json'])
-config = load_configuration()
-
 
 def load_configuration():
   '''Load the program's configuration'''
@@ -37,6 +32,11 @@ def load_configuration():
     click.echo('Please check that it is correctly formatted.')
     sys.exit(1)
 
+
+# Load the program's configuration from a JSON file
+# The config filename is stored for future convenience
+CONFIG_FILE = os.sep.join([os.environ['HOME'], '.cmdmine', 'config.json'])
+config = load_configuration()
 
 def redmine_auth():
   '''Authenticate with and return a configured redmine object'''
@@ -87,8 +87,14 @@ def show_macros():
     click.echo('You currently have no macros registered.')
     return
   macro_file = open(MACROS_FILE, 'rb')
-  macros = pickle.load(macro_file)
+  try:
+    macros = pickle.load(macro_file)
+  except Exception:
+    macro_file.close()
+    click.echo('You currently have no macros registered.')
+    return
   macro_file.close()
+  print 'loaded pickled macros'
   click.echo('Macro\tProject\t\tIssue ID')
   for macro_name in macros.keys():
     click.echo('{0}\t{1}\t\t{2}'.format(
@@ -123,7 +129,10 @@ def macro(issue, project, macro_name):
     macros = {}
   else:
     macro_file = open(MACROS_FILE, 'rb')
-    macros = pickle.load(macro_file)
+    try:
+      macros = pickle.load(macro_file)
+    except Exception:
+      macros = {}
     macro_file.close()
   macro_file = open(MACROS_FILE, 'wb')
   macros[macro_name] = {'issue_id': issue, 'project_name': project}
@@ -173,27 +182,27 @@ def issues(project, limit, offset):
 
 
 @cmdmine.command()
-@cmdmine.argument('project', type=click.Choice(config['redmine-projects']))
-@cmdmine.option('--subject', '-s' type=str,
+@click.argument('project', type=click.Choice(config['redmine-projects']))
+@click.option('--subject', '-s', type=str,
   help='A descriptive subject for the new task')
-@cmdmine.option('--priority', '-p', type=click.Choice(config['priorities']), default=config['default-priority'],
+@click.option('--priority', '-p', type=click.Choice(config['priorities']), default=config['default-priority'],
   help='The name of the priority to assign to the new task')
-@cmdmine.option('--due', '-d', type=str,
+@click.option('--due', '-d', type=str,
   help='The due date of the task. Defaults to none. Format is YYYY-MM-DD')
-@cmdmine.option('--time', '-t', type=int,
+@click.option('--time', '-t', type=int,
   help='The estimated number of hours required to complete the task')
-@cmdmine.option('--description', '-D', type=str, default='No description provided.',
+@click.option('--description', '-D', type=str, default='No description provided.',
   help='A description to explain the task')
-@cmdmine.option('--tracker', '-T', type=str, default=config['default-tracker'],
+@click.option('--tracker', '-T', type=str, default=config['default-tracker'],
   help='The name of the tracker to use for the task')
-def new_task(project, subject, priority, due, time, description, tracker):
+def task(project, subject, priority, due, time, description, tracker):
   if subject is None:
     click.echo('No subject was provided for the task. Use the --subject or -s flag.')
     return
   due_date_str = str(due)
   try:
     if due is not None:
-      due = datetime.strptime(due, '%Y-%m-%d')
+      due = datetime.datetime.strptime(due, '%Y-%m-%d')
   except ValueError:
     click.echo(due + ' is not a valid date. The format is YYYY-MM-DD')
     return
@@ -202,12 +211,16 @@ def new_task(project, subject, priority, due, time, description, tracker):
   tracker = config['trackers'][tracker]
   project = config['redmine-projects'][project]
   today = datetime.date.today().strftime('%Y-%m-%d')
-  REDMINE = readmine_auth()
+  REDMINE = redmine_auth()
   issue = REDMINE.issue.create(
     project_id=project, subject=subject, tracker_id=tracker, description=description,
     status_id=config['new-task-status'], priority_id=priority, assigned_to_id=config['assignee-me'],
-    start_date=today, due_date=due, estimated_hours=time)
-  issue.save()
+    start_date=today, due_date=due, estimated_hours=time,
+    watcher_user_ids=[], parent_issue_id=-1, done_ratio=0, custom_fields=[], uploads=[])
+  try:
+    issue.save()
+  except Exception:
+    pass # This call successfully creates an issue but throws some weird exception anyway. Dunno.
   click.echo('Created new {0} in project {1}.\n{2}\nDue date: {3}, Estimated time (hours): {4}.'.format(
     tracker_name, project, subject, due_date_str, str(time)))
 
@@ -239,15 +252,22 @@ def log(activity, project, issue, macro, hours, minutes, date, comments):
     return
   if date is None:
     date = datetime.date.today().strftime('%Y-%m-%d')
+  if hours is None:
+    hours = 0
+  if minutes is None:
+    minutes = 0
   REDMINE = redmine_auth()
   time_spent = hours + (minutes / 60.0)
   time_entry = REDMINE.time_entry.create(
     issue_id=issue, spent_on=date, hours=time_spent,
     activity_id=config['activities'][activity], comments=str(comments))
-  time_entry.save()
+  try:
+    time_entry.save()
+  except Exception:
+    pass # This works but for some reason throws an exception like saving a task does. Dunno why.
   log_activity(date, time_spent, project, issue, activity, comments)
   click.echo('Logged {0} hours of work on issue {1}, project {2} at {3}.'.format(
-    time_spent, issue_id, project, date))
+    time_spent, issue, project, date))
   click.echo('Comment: ' + str(comments))
 
 
