@@ -153,8 +153,7 @@ def show(what):
 
 
 @cmdmine.command()
-@click.option('--project', '-p',
-  help='The shorthand name of the project to search')
+@click.argument('project', type=click.Choice(config['redmine-projects']))
 @click.option('--limit', '-l', default=20,
   help='Limit the number of issues that will be reported')
 @click.option('--offset', '-o', default=0,
