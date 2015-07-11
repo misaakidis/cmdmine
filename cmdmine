@@ -174,7 +174,7 @@ def macro(issue, project, macro_name):
 @cmdmine.command()
 @click.argument('what', type=click.Choice(['macros', 'logs', 'hours']))
 @click.option('--since', '-s', type=str,
-  help='Start date from which to start counting hours worked. Only applies to the hours argument')
+  help='Start date from which to start counting hours worked. Format is YYYY-MM-DD')
 def show(what, since):
   if what == 'macros':
     show_macros()
