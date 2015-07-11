@@ -113,10 +113,10 @@ nicer.
     cmdmine show WHAT
 
 The `show` command is used to output locally stored information.  Currently, that can be either
-the list of currently recorded macros (their names, along with the associated issue ID and
-project name) or it can be the content of the log file storing information about your time logs.
-As you might expect, `WHAT` is replaced with `macros` for the former case, and `logs` for the
-latter.
+
+1. `macros` - The list of currently recorded macros along with their associated issue IDs
+2. `logs`   - The content of the log file storing information about your time logs
+3. `hours`  - The total number of recorded hours of work, optionally since a particular date
 
 ## Configuration
 

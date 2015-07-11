@@ -1,0 +1,6 @@
+# Changelog
+
+## Version 0.2
+
+1. Use a user's Redmine API key rather than their username and password
+2. New `show hours` command to compute total logged hours (opt. since a specified time)
