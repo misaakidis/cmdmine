@@ -4,6 +4,7 @@ import os
 import re
 import sys
 import json
+import math
 import pickle
 import datetime
 import click 
@@ -114,6 +115,32 @@ def show_logs():
   log_file.close()
 
 
+def show_hours(since_date):
+  '''Compute the number of hours worked since a particular date (or in total-None)'''
+  if not os.path.isfile(ACTIVITY_FILE):
+    click.echo('No activities logged yet.')
+    return
+  log_lines = open(ACTIVITY_FILE, 'r').readlines()
+  line_num = 0
+  hours_spent = 0
+  # Skip over entries until the start of logs with timestamp `since_date`
+  if since_date is not None:
+    line = log_lines[line_num].split('@@')
+    start_date = datetime.datetime.strptime(since_date, '%Y-%m-%d')
+    line_date = datetime.datetime.strptime(line[0].split(' ')[0], '%Y-%m-%d')
+    while line_date < start_date:
+      line_num += 4
+      line = log_lines[line_num].split('@@')
+      line_date = datetime.datetime.strptime(line[0].split(' ')[0], '%Y-%m-%d')
+  # Compute the total number of hours spent  
+  for line in log_lines[line_num::4]:
+    hours_spent += float(line.split('@@')[1].split(' ')[0])
+  hours = int(math.floor(hours_spent))
+  minutes = int(math.ceil((hours_spent - hours) * 60))
+  click.echo('Total time spent: {0} hours, {1} minutes'.format(hours, minutes))
+  
+
+
 @click.group()
 def cmdmine():
   pass
@@ -145,12 +172,16 @@ def macro(issue, project, macro_name):
 
 
 @cmdmine.command()
-@click.argument('what', type=click.Choice(['macros', 'logs']))
-def show(what):
+@click.argument('what', type=click.Choice(['macros', 'logs', 'hours']))
+@click.option('--since', '-s', type=str,
+  help='Start date from which to start counting hours worked. Only applies to the hours argument')
+def show(what, since):
   if what == 'macros':
     show_macros()
-  else:
+  elif what == 'logs':
     show_logs()
+  elif what == 'hours':
+    show_hours(since)
 
 
 @cmdmine.command()
