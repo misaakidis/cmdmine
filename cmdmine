@@ -43,7 +43,7 @@ def redmine_auth():
   click.echo('Authenticating with redmine.')
   try:
     REDMINE = Redmine(config['redmine-location'],
-      username=config['redmine-username'], password=config['redmine-password'],
+      key=config['redmine-api-key'],
       requests={'verify': False}, raise_attr_exception=False)
   except Exception:
     click.echo('Failed to authenticate.\nQuitting.')
