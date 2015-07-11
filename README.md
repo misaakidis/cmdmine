@@ -124,13 +124,10 @@ The `show` command is used to output locally stored information.  Currently, tha
 
 The URL of your redmine instance.
 
-### redmine-username
+### redmine-api-key
 
-Your redmine username.
-
-### redmine-password
-
-Your redmine password.
+Your personal API key for Redmine.  Obtained under the `API access key` section of the
+`My account` page on the right side.
 
 ### redmine-projects
 
