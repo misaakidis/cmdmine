@@ -1,7 +1,6 @@
 {
   "redmine-location": "",
-  "redmine-username": "",
-  "redmine-password": "",
+  "redmine-api-key": "",
   "redmine-projects": {
   },
   "activities": {
