@@ -159,9 +159,10 @@ def cmdmine():
 @click.option('--issue', '-i', type=int,
   help='The ID of the issue to reference')
 @click.option('--project', '-p', type=str,
-  help='The shorthand name of the project to refence')
+  help='The shorthand name of the project to reference')
+@click.option('--delete', '-d', is_flag=True)
 @click.argument('macro_name')
-def macro(issue, project, macro_name):
+def macro(issue, project, delete, macro_name):
   if not os.path.isfile(MACROS_FILE):
     macros = {}
   else:
@@ -171,12 +172,19 @@ def macro(issue, project, macro_name):
     except Exception:
       macros = {}
     macro_file.close()
-  macro_file = open(MACROS_FILE, 'wb')
-  macros[macro_name] = {'issue_id': issue, 'project_name': project}
+  if delete:
+    if macro_name in macros.keys():
+      del macros[macro_name]
+      click.echo('Deleted {0} macro.'.format(macro_name))
+    else:
+      click.echo('No such macro: {0}.'.format(macro_name))
+  else:
+    macros[macro_name] = {'issue_id': issue, 'project_name': project}
+    click.echo('Registered macro {0} for project {1}, issue {2}.'.format(
+      macro_name, project, issue))
+  macro_file = open(MACROS_FILE, 'wb')  
   pickle.dump(macros, macro_file)
   macro_file.close()
-  click.echo('Registered macro {0} for project {1} issue {2}.'.format(
-    macro_name, project, issue))
   click.echo('You now have {0} macros registered.'.format(len(macros.keys())))
 
 
