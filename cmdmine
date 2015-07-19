@@ -96,11 +96,20 @@ def show_macros():
     click.echo('You currently have no macros registered.')
     return
   macro_file.close()
-  print 'loaded pickled macros'
-  click.echo('Macro\tProject\t\tIssue ID')
+  # Find the longest macro name and project name so we can format the output more nicely
+  l_macro_len = l_project_len = 0
   for macro_name in macros.keys():
-    click.echo('{0}\t{1}\t\t{2}'.format(
-      macro_name, macros[macro_name]['project_name'], macros[macro_name]['issue_id']))
+    lmn = len(macro_name)
+    lpn = len(macros[macro_name]['project_name'])
+    l_macro_len = lmn if lmn > l_macro_len else l_macro_len
+    l_project_len = lpn if lpn > l_project_len else l_project_len
+  click.echo('{0} {1} Issue ID'.format('Macro'.ljust(l_macro_len), 'Project'.ljust(l_project_len)))
+  click.echo('{0} {1} {2}'.format('-----'.ljust(l_macro_len), '-------'.ljust(l_project_len), '--------'))
+  for macro_name in macros.keys():
+    click.echo('{0} {1} {2}'.format(
+      macro_name.ljust(l_macro_len),
+      macros[macro_name]['project_name'].ljust(l_project_len),
+      macros[macro_name]['issue_id']))
 
 
 def show_logs():
