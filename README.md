@@ -108,6 +108,10 @@ takes the ID of the issue to create a macro for, and you can use the project (`-
 option to also provide the project name the issue belongs to in order to make your logs appear
 nicer.
 
+You can delete an existing macro instead of creating a new one by adding the `-d` or `--delete` flag.
+
+    cmdmine macro -d <macro_name>
+
 ### show
 
     cmdmine show WHAT
@@ -117,6 +121,27 @@ The `show` command is used to output locally stored information.  Currently, tha
 1. `macros` - The list of currently recorded macros along with their associated issue IDs
 2. `logs`   - The content of the log file storing information about your time logs
 3. `hours`  - The total number of recorded hours of work, optionally since a particular date
+
+### update
+
+    cmdmine update [OPTIONS]
+
+The `update` command is used to update the attributes of an existing issue.  It can be used to
+set the status, priority, percentage complete, and due date of an issue.  Like most commands,
+you can specify the issue to update using either the macro (`-m` or `--macro`) option or the
+issue ID (`-i` or `--issue`) option.  If you choose to use the issue option, you can also
+provide the project name shorthand (`-p` or `--project`) to make the resulting log entry nicer.
+
+### close
+
+    cmdmine close [OPTIONS]
+
+The `close` command is used to update an issue's status to `closed`.  
+You can specify the issue to update using either the macro (`-m` or `--macro`) option or the
+issue ID (`-i` or `--issue`) option.  If you choose to use the issue option, you can also
+provide the project name shorthand (`-p` or `--project`) to make the resulting log entry nicer.
+
+Note that this command does not set the percentage done to 100%.
 
 ## Configuration
 
@@ -168,6 +193,14 @@ Aliases and names work just as with `trackers` and `activities`.
 
 The default priority to use for new tasks.
 Must be ones of the keys (words on the LEFT of ':') in `priorities`.
+
+### statuses
+
+The possible statuses that an issue can take on.
+
+### closed-status
+
+The ID of your equivalent of the "closed" status.
 
 ### assignee-me
 
