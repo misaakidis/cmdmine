@@ -347,7 +347,7 @@ def log(activity, project, issue, macro, hours, minutes, date, time, comments):
   help='The name of a macro referring to the issue to update')
 @click.option('--issue', '-i', type=int,
   help='The ID of the issue to update')
-@click.option('--project', '-p', type=str,
+@click.option('--project', '-p', type=click.Choice(config['redmine-projects']),
   help='The shorthand name of the project the issue to update belongs to')
 @click.option('--status', '-s', type=click.Choice(config['statuses']),
   help='The new status for the issue')
@@ -389,6 +389,34 @@ def update(macro, issue, project, status, priority, done, due):
     pass # Seriously, why do all write operations raise an exception despite working fine?
   click.echo('Issue updated successfully.')
 
+
+@cmdmine.command()
+@click.option('--macro', '-m', type=str,
+  help='The name of a macro identifying the issue to close')
+@click.option('--project', '-p', type=click.Choice(config['redmine-projects']),
+  help='The shorthand name for the project that the issue to close belongs to')
+@click.option('--issue', '-i', type=int,
+  help='The ID of the issue to close- must be provided if a macro is not')
+def close(macro, project, issue):
+  if macro is not None:
+    project, issue = get_issue_info(macro)
+  if (not project) and (not issue): # Both are empty or None
+    click.echo('No information available about the issue specified.')
+    return
+  REDMINE = redmine_auth()
+  today = datetime.date.today().strftime('%Y-%m-%d')
+  now = datetime.datetime.now().strftime('%H:%M')
+  try:
+    isubject = REDMINE.issue.get(issue).subject
+    log_activity(today, now, 0, project, issue, isubject, 'Update', 'Closing issue')
+  except Exception:
+    click.echo('No issue with ID {0} exists. Aborting update.'.format(issue))
+    return
+  try:
+    REDMINE.issue.update(issue, status_id=config['closed-status'])
+  except Exception:
+    pass
+  click.echo('Issue closed successfully.')
 
 
 if __name__ == '__main__':
