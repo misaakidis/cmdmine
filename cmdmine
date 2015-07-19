@@ -241,7 +241,8 @@ def issues(project, limit, offset):
   help='The estimated number of hours required to complete the task')
 @click.option('--description', '-D', type=str, default='No description provided.',
   help='A description to explain the task')
-@click.option('--tracker', '-T', type=str, default=config['default-tracker'],
+@click.option('--tracker', '-T', type=click.Choice(config['trackers']),
+  default=config['default-tracker'],
   help='The name of the tracker to use for the task')
 def task(project, subject, priority, due, time, description, tracker):
   if subject is None:
