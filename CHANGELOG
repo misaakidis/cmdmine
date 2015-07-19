@@ -4,3 +4,13 @@
 
 1. Use a user's Redmine API key rather than their username and password
 2. New `show hours` command to compute total logged hours (opt. since a specified time)
+
+## Version 0.3
+
+1. Improved the formatting for the `show macros` command
+2. Added the ability to delete macros using `cmdmine macro -d <macro_name>`
+3. Made the `-T` or `--tracker` option for `task` a Choice type
+4. The `show hours` command now shows time logged by project and total time logged
+5. Added the ablity to update existing issues
+6. Added a `close` command to close an issue given a macro or issue ID
+7. Added some more logging efforts (e.g. log when task is created, updated and closed)
