@@ -240,7 +240,9 @@ def issues(project, limit, offset):
     if subject_length > longest_subject_length:
       longest_subject_length = subject_length
   longest_subject_length += 1
-  click.echo('ID' + (' ' * 5) + 'Subject'.ljust(longest_subject_length) + ' Assigned to')
+  click.echo('') # Print a nice blank line before our gorgeous table
+  click.echo('ID     ' + 'Subject'.ljust(longest_subject_length) + ' Assigned to')
+  click.echo('----   ' + '-------'.ljust(longest_subject_length) + ' -----------')
   for issue in issues[offset : offset + limit + 1]:
     click.echo(u'{0} - {1} {2}'.format(
       str(issue.id), (issue.subject + ' ').ljust(longest_subject_length, '-'), str(issue.assigned_to)))
