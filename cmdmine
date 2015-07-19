@@ -277,6 +277,7 @@ def task(project, subject, priority, due, time, description, tracker):
   tracker = config['trackers'][tracker]
   project = config['redmine-projects'][project]
   today = datetime.date.today().strftime('%Y-%m-%d')
+  now = datetime.datetime.now().strftime('%H:%M')
   REDMINE = redmine_auth()
   issue = REDMINE.issue.create(
     project_id=project, subject=subject, tracker_id=tracker, description=description,
@@ -285,6 +286,7 @@ def task(project, subject, priority, due, time, description, tracker):
     watcher_user_ids=[], parent_issue_id=-1, done_ratio=0, custom_fields=[], uploads=[])
   try:
     issue.save()
+    log_activity(today, now, 0, project, issue.id, subject, 'Create', 'Created new task')
   except Exception:
     pass # This call successfully creates an issue but throws some weird exception anyway. Dunno.
   click.echo('Created new {0} in project {1}.\n{2}\nDue date: {3}, Estimated time (hours): {4}.'.format(
