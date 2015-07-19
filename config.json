@@ -30,6 +30,14 @@
     "highest": 7
   },
   "default-priority": "normal",
+  "statuses": {
+    "new": 1,
+    "in-progress": 2,
+    "resolved": 3,
+    "feedback": 4,
+    "closed": 5
+  },
+  "closed-status": 5,
   "assignee-me": 18,
   "new-task-status": 1
 }
