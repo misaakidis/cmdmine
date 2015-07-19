@@ -131,7 +131,8 @@ def show_hours(since_date):
     return
   log_lines = open(ACTIVITY_FILE, 'r').readlines()
   line_num = 0
-  hours_spent = 0
+  hours_spent = {} # Map project names to number of hours spent on that project
+  total_hours = 0
   # Skip over entries until the start of logs with timestamp `since_date`
   if since_date is not None:
     line = log_lines[line_num].split('@@')
@@ -141,12 +142,28 @@ def show_hours(since_date):
       line_num += 4
       line = log_lines[line_num].split('@@')
       line_date = datetime.datetime.strptime(line[0].split(' ')[0], '%Y-%m-%d')
-  # Compute the total number of hours spent  
+  # Compute the total number of hours spent
+  longest_proj_len = 0
   for line in log_lines[line_num::4]:
-    hours_spent += float(line.split('@@')[1].split(' ')[0])
-  hours = int(math.floor(hours_spent))
-  minutes = int(math.ceil((hours_spent - hours) * 60))
-  click.echo('Total time spent: {0} hours, {1} minutes'.format(hours, minutes))
+    components = line.split('@@')
+    project = components[2].split(' issue')[0]
+    hours = float(line.split('@@')[1].split(' ')[0])
+    total_hours += hours
+    if project in hours_spent.keys():
+      hours_spent[project] += hours
+    else:
+      hours_spent[project] = hours
+    if len(project) > longest_proj_len:
+      longest_proj_len = len(project)
+  click.echo('{0} Time Logged'.format('Project'.ljust(longest_proj_len)))
+  click.echo('{0} -----------'.format('-------'.ljust(longest_proj_len)))
+  for project in hours_spent.keys():
+    hours = int(math.floor(hours_spent[project]))
+    minutes = int(math.ceil((hours_spent[project] - hours) * 60))
+    click.echo('{0} {1} hours, {2} minutes'.format(project.ljust(longest_proj_len), hours, minutes))
+  hours = int(math.floor(total_hours))
+  minutes = int(math.ceil((total_hours - hours) * 60))
+  click.echo('-- Total: {0} hours, {1} minutes --'.format(hours, minutes))
   
 
 
