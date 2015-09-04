@@ -35,8 +35,10 @@
     "in-progress": 2,
     "resolved": 3,
     "feedback": 4,
-    "closed": 5
+    "closed": 5,
+    "rejected": 6
   },
+  "rejected-status": 6,
   "closed-status": 5,
   "assignee-me": 18,
   "new-task-status": 1

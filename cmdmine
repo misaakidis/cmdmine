@@ -423,5 +423,40 @@ def close(macro, project, issue):
   click.echo('Issue closed successfully.')
 
 
+@cmdmine.command()
+@click.option('--macro', '-m', type=str,
+  help='The name of a macro identifying the issue to reject')
+@click.option('--project', '-p', type=str,
+  help='The shorthand name for the project that the issue to reject belongs to')
+@click.option('--issue', '-i', type=int,
+  help='The ID of the issue to reject- must be provided if a macro is not')
+@click.option('--comment', '-c', type=str,
+  help='A comment explaining why the issue is being rejected')
+def reject(macro, project, issue, comment):
+  if macro is not None:
+    project, issue = get_issue_info(macro)
+  if (not project) and (not issue): # Both are empty or None
+    click.echo('No information available about the issue specified.')
+    return
+  REDMINE = redmine_auth()
+  try:
+    subject = REDMINE.issue.get(issue).subject
+    now = datetime.datetime.now()
+    log_activity(
+      now.strftime('%Y-%m-%d'), now.strftime('%H:%M'), 0,
+      project, issue, subject, 'Reject', 'Rejected issue')
+  except Exception:
+    click.echo('No issue with ID {0} exists. Aborting reject.'.format(issue))
+    return
+  if comment is None or comment == '':
+    comment = 'No reason provided.'
+  try:
+    REDMINE.issue.update(issue, status_id=config['rejected-status'], description=comment)
+  except Exception as ex:
+    click.echo(ex.message)
+    pass
+  click.echo('Issue status set to rejected.')
+
+
 if __name__ == '__main__':
   cmdmine()
