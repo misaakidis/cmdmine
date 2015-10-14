@@ -62,6 +62,9 @@ Note that, for a given resource, all the commands you'll use to do something wil
 
     cmdmine <action> <resource> [-flag1 value1] [-flag2 value2] [...]
 
+In the case of the `new`, `update`, and `delete` actions, `<resource>` is singular. In the case
+of the `list` command, the `<resource>` is plural.
+
 ### Issues
 
 Function | Description
