@@ -5,7 +5,6 @@ import re
 import sys
 import json
 import math
-import pickle
 import datetime
 import click 
 from redmine import Redmine
@@ -14,8 +13,26 @@ from redmine import Redmine
 import requests
 requests.packages.urllib3.disable_warnings()
 
-MACROS_FILE = os.sep.join([os.environ['HOME'], '.cmdmine', 'macros.dat'])
-ACTIVITY_FILE = os.sep.join([os.environ['HOME'], '.cmdmine', 'activities.log'])
+MACROS_FILE = os.sep.join([os.environ['HOME'], '.cmdmine', 'macros.json'])
+ACTIVITY_FILE = os.sep.join([os.environ['HOME'], '.cmdmine', 'activities.json'])
+
+# Subcommands
+
+@click.group()
+def new():
+  pass
+
+@click.group()
+def update():
+  pass
+
+@click.group()
+def list():
+  pass
+
+@click.group()
+def delete():
+  pass
 
 
 def load_configuration():
@@ -56,19 +73,27 @@ def redmine_auth():
 def build_projects(REDMINE):
   '''Collect information about projects aliased in the config'''
   click.echo('Collecting project information.')
-  PROJECTS = { name: REDMINE.project.get(config['redmine-projects'][name]) for name in config['redmine-projects'].keys() }
+  PROJECTS = { name: REDMINE.project.get(config['redmine-projects'][name])
+              for name in config['redmine-projects'].keys() }
   click.echo('Done.')
   return PROJECTS
 
 
-def log_activity(date, time, time_spent, project, issue, isubject, activity, comments):
+def log_activity(date, time, hours, minutes, project, issue, isubject, activity, comments):
   '''Write an activity entry to a log file for local reference'''
-  f = open(ACTIVITY_FILE, 'a')
-  f.write('{0} {1}@@{2} hours@@{3} issue #{4}@@{5}\n'.format(
-    date, time, time_spent, project, issue, activity))
-  f.write('Issue: ' + str(isubject) + '\n')
-  f.write('Comment: ' + str(comments) + '\n\n')
-  f.close()
+  logs = json.loads(open(ACTIVITY_FILE, 'r').read())
+  logs.append({
+    "date": date,
+    "time": time,
+    "hours": hours,
+    "minutes": minutes,
+    "projectName": project,
+    "issueId": isssue,
+    "issueName": str(isubject),
+    "commitType": activity,
+    "comment": str(comments)
+  })
+  open(ACTIVITY_FILE, 'w').write(json.dumps(logs))
 
 
 def get_issue_info(macro_name):
@@ -166,10 +191,6 @@ def show_hours(since_date):
   click.echo('-- Total: {0} hours, {1} minutes --'.format(hours, minutes))
   
 
-
-@click.group()
-def cmdmine():
-  pass
 
 
 @cmdmine.command()
@@ -288,7 +309,7 @@ def task(project, subject, priority, due, time, description, tracker):
     watcher_user_ids=[], parent_issue_id=-1, done_ratio=0, custom_fields=[], uploads=[])
   try:
     issue.save()
-    log_activity(today, now, 0, project, issue.id, subject, 'Create', 'Created new task')
+    log_activity(today, now, 0, 0, project, issue.id, subject, 'Create', 'Created new task')
   except Exception:
     pass # This call successfully creates an issue but throws some weird exception anyway. Dunno.
   click.echo('Created new {0} in project {1}.\n{2}\nDue date: {3}, Estimated time (hours): {4}.'.format(
@@ -340,7 +361,7 @@ def log(activity, project, issue, macro, hours, minutes, date, time, comments):
   except Exception:
     pass # This works but for some reason throws an exception like saving a task does. Dunno why.
   issue_subject = REDMINE.issue.get(issue).subject
-  log_activity(date, time, time_spent, project, issue, issue_subject, activity, comments)
+  log_activity(date, time, hours, minutes, project, issue, issue_subject, activity, comments)
   click.echo('Logged {0} hours of work on issue {1}, project {2} at {3}.'.format(
     time_spent, issue, project, date))
   click.echo('Comment: ' + str(comments))
@@ -383,7 +404,7 @@ def update(macro, issue, project, status, priority, done, due):
   now = datetime.datetime.now().strftime('%H:%M')
   try:
     isubject = REDMINE.issue.get(issue).subject
-    log_activity(today, now, 0, project, issue, isubject, 'Update', 'Updated issue')
+    log_activity(today, now, 0, 0, project, issue, isubject, 'Update', 'Updated issue')
   except Exception:
     click.echo('No issue with ID {0} exists. Aborting update.'.format(issue))
     return
@@ -412,7 +433,7 @@ def close(macro, project, issue):
   now = datetime.datetime.now().strftime('%H:%M')
   try:
     isubject = REDMINE.issue.get(issue).subject
-    log_activity(today, now, 0, project, issue, isubject, 'Update', 'Closing issue')
+    log_activity(today, now, 0, 0, project, issue, isubject, 'Update', 'Closing issue')
   except Exception:
     click.echo('No issue with ID {0} exists. Aborting update.'.format(issue))
     return
@@ -443,7 +464,7 @@ def reject(macro, project, issue, comment):
     subject = REDMINE.issue.get(issue).subject
     now = datetime.datetime.now()
     log_activity(
-      now.strftime('%Y-%m-%d'), now.strftime('%H:%M'), 0,
+      now.strftime('%Y-%m-%d'), now.strftime('%H:%M'), 0, 0,
       project, issue, subject, 'Reject', 'Rejected issue')
   except Exception:
     click.echo('No issue with ID {0} exists. Aborting reject.'.format(issue))
