@@ -19,18 +19,22 @@ ACTIVITY_FILE = os.sep.join([os.environ['HOME'], '.cmdmine', 'activities.json'])
 # Subcommands
 
 @click.group()
+def cmdmine():
+  pass
+
+@cmdmine.group()
 def new():
   pass
 
-@click.group()
+@cmdmine.group()
 def update():
   pass
 
-@click.group()
+@cmdmine.group()
 def list():
   pass
 
-@click.group()
+@cmdmine.group()
 def delete():
   pass
 
@@ -82,13 +86,14 @@ def build_projects(REDMINE):
 def log_activity(date, time, hours, minutes, project, issue, isubject, activity, comments):
   '''Write an activity entry to a log file for local reference'''
   logs = json.loads(open(ACTIVITY_FILE, 'r').read())
+  print issue
   logs.append({
     "date": date,
     "time": time,
     "hours": hours,
     "minutes": minutes,
     "projectName": project,
-    "issueId": isssue,
+    "issueId": issue,
     "issueName": str(isubject),
     "commitType": activity,
     "comment": str(comments)
@@ -100,9 +105,7 @@ def get_issue_info(macro_name):
   '''Returns the project name and issue ID for an issue assigned to a macro'''
   if not os.path.isfile(MACROS_FILE):
     return None, None
-  macro_file = open(MACROS_FILE, 'rb')
-  macros = pickle.load(macro_file)
-  macro_file.close()
+  macros = json.loads(open(MACROS_FILE, 'r').read())
   if macro_name not in macros.keys():
     return None, None
   return macros[macro_name]['project_name'], macros[macro_name]['issue_id']
@@ -113,14 +116,11 @@ def show_macros():
   if not os.path.isfile(MACROS_FILE):
     click.echo('You currently have no macros registered.')
     return
-  macro_file = open(MACROS_FILE, 'rb')
   try:
-    macros = pickle.load(macro_file)
+    macros = json.loads(open(MACROS_FILE, 'r').read()) 
   except Exception:
-    macro_file.close()
     click.echo('You currently have no macros registered.')
     return
-  macro_file.close()
   # Find the longest macro name and project name so we can format the output more nicely
   l_macro_len = l_project_len = 0
   for macro_name in macros.keys():
@@ -142,11 +142,15 @@ def show_logs():
   if not os.path.isfile(ACTIVITY_FILE):
     click.echo('No activities logged yet.')
     return
-  log_file = open(ACTIVITY_FILE, 'r')
-  for line in log_file:
-    line = line.replace('@@', ' - ').replace('\n', '', 1)
-    click.echo(line)
-  log_file.close()
+  logs = json.loads(open(ACTIVITY_FILE, 'r').read())
+  for log in logs:
+    click.echo('''
+Committed {0} hours, {1} minutes of {2} to issue #{3} in {4} on {5} at {6}.
+Issue: {7}
+Comment: {8}
+'''.format(
+    log['hours'], log['minutes'], log['commitType'], log['issueId'],
+    log['projectName'], log['date'], log['time'], log['issueName'], log['comment']))
 
 
 def show_hours(since_date):
@@ -154,43 +158,37 @@ def show_hours(since_date):
   if not os.path.isfile(ACTIVITY_FILE):
     click.echo('No activities logged yet.')
     return
-  log_lines = open(ACTIVITY_FILE, 'r').readlines()
-  line_num = 0
-  hours_spent = {} # Map project names to number of hours spent on that project
-  total_hours = 0
-  # Skip over entries until the start of logs with timestamp `since_date`
+  logs = json.loads(open(ACTIVITY_FILE, 'r').read())
   if since_date is not None:
-    line = log_lines[line_num].split('@@')
-    start_date = datetime.datetime.strptime(since_date, '%Y-%m-%d')
-    line_date = datetime.datetime.strptime(line[0].split(' ')[0], '%Y-%m-%d')
-    while line_date < start_date:
-      line_num += 4
-      line = log_lines[line_num].split('@@')
-      line_date = datetime.datetime.strptime(line[0].split(' ')[0], '%Y-%m-%d')
-  # Compute the total number of hours spent
+    dt = datetime.datetime.strptime(since_date, '%Y-%m-%d')
+  else:
+    dt = datetime.datetime(1970, 1, 1, 0, 0, 0)
+  logs = filter(
+    lambda log: datetime.datetime.strptime(log['date'], '%Y-%m-%d') >= dt,
+    logs)
+  hours_spent = {} # Map project names to number of hours spent on that project
+  # Keep track of the length of the longest project name for formatting later
   longest_proj_len = 0
-  for line in log_lines[line_num::4]:
-    components = line.split('@@')
-    project = components[2].split(' issue')[0]
-    hours = float(line.split('@@')[1].split(' ')[0])
-    total_hours += hours
-    if project in hours_spent.keys():
-      hours_spent[project] += hours
+  for log in logs:
+    time_spent = log['hours'] + (log['minutes'] / 60.0)
+    if log['projectName'] in hours_spent:
+      hours_spend[log['projectName']] += time_spent
     else:
-      hours_spent[project] = hours
-    if len(project) > longest_proj_len:
-      longest_proj_len = len(project)
+      hours_spent[log['projectName']] = time_spent
+    if len(log['projectName']) > longest_proj_len:
+      longest_proj_len = len(log['projectName'])
   click.echo('{0} Time Logged'.format('Project'.ljust(longest_proj_len)))
   click.echo('{0} -----------'.format('-------'.ljust(longest_proj_len)))
+  total = 0
   for project in hours_spent.keys():
-    hours = int(math.floor(hours_spent[project]))
-    minutes = int(math.ceil((hours_spent[project] - hours) * 60))
-    click.echo('{0} {1} hours, {2} minutes'.format(project.ljust(longest_proj_len), hours, minutes))
-  hours = int(math.floor(total_hours))
-  minutes = int(math.ceil((total_hours - hours) * 60))
+    click.echo('{0} hours {1}'.format(
+      project.ljust(longest_proj_len),
+      hours_spent[project]))
+    total += hours_spent[project]
+  hours = int(math.floor(total))
+  minutes = int(math.ceil((total - hours) * 60))
   click.echo('-- Total: {0} hours, {1} minutes --'.format(hours, minutes))
   
-
 
 
 @cmdmine.command()
@@ -204,12 +202,10 @@ def macro(issue, project, delete, macro_name):
   if not os.path.isfile(MACROS_FILE):
     macros = {}
   else:
-    macro_file = open(MACROS_FILE, 'rb')
     try:
-      macros = pickle.load(macro_file)
+      macros = json.loads(open(MACROS_FILE, 'r').read())
     except Exception:
       macros = {}
-    macro_file.close()
   if delete:
     if macro_name in macros.keys():
       del macros[macro_name]
@@ -220,9 +216,7 @@ def macro(issue, project, delete, macro_name):
     macros[macro_name] = {'issue_id': issue, 'project_name': project}
     click.echo('Registered macro {0} for project {1}, issue {2}.'.format(
       macro_name, project, issue))
-  macro_file = open(MACROS_FILE, 'wb')  
-  pickle.dump(macros, macro_file)
-  macro_file.close()
+  open(MACROS_FILE, 'w').write(json.dumps(macros))
   click.echo('You now have {0} macros registered.'.format(len(macros.keys())))
 
 
