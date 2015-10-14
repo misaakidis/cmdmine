@@ -16,7 +16,7 @@ requests.packages.urllib3.disable_warnings()
 MACROS_FILE = os.sep.join([os.environ['HOME'], '.cmdmine', 'macros.json'])
 ACTIVITY_FILE = os.sep.join([os.environ['HOME'], '.cmdmine', 'activities.json'])
 
-# Subcommands
+## COMMAND TYPES
 
 @click.group()
 def cmdmine():
@@ -38,6 +38,8 @@ def list():
 def delete():
   pass
 
+
+## HELPER FUNCTIONS
 
 def load_configuration():
   '''Load the program's configuration'''
@@ -111,48 +113,6 @@ def get_issue_info(macro_name):
   return macros[macro_name]['project_name'], macros[macro_name]['issue_id']
 
 
-def show_macros():
-  '''List all currently registered macros'''
-  if not os.path.isfile(MACROS_FILE):
-    click.echo('You currently have no macros registered.')
-    return
-  try:
-    macros = json.loads(open(MACROS_FILE, 'r').read()) 
-  except Exception:
-    click.echo('You currently have no macros registered.')
-    return
-  # Find the longest macro name and project name so we can format the output more nicely
-  l_macro_len = l_project_len = 0
-  for macro_name in macros.keys():
-    lmn = len(macro_name)
-    lpn = len(macros[macro_name]['project_name'])
-    l_macro_len = lmn if lmn > l_macro_len else l_macro_len
-    l_project_len = lpn if lpn > l_project_len else l_project_len
-  click.echo('{0} {1} Issue ID'.format('Macro'.ljust(l_macro_len), 'Project'.ljust(l_project_len)))
-  click.echo('{0} {1} {2}'.format('-----'.ljust(l_macro_len), '-------'.ljust(l_project_len), '--------'))
-  for macro_name in macros.keys():
-    click.echo('{0} {1} {2}'.format(
-      macro_name.ljust(l_macro_len),
-      macros[macro_name]['project_name'].ljust(l_project_len),
-      macros[macro_name]['issue_id']))
-
-
-def show_logs():
-  '''List all time log entries'''
-  if not os.path.isfile(ACTIVITY_FILE):
-    click.echo('No activities logged yet.')
-    return
-  logs = json.loads(open(ACTIVITY_FILE, 'r').read())
-  for log in logs:
-    click.echo('''
-Committed {0} hours, {1} minutes of {2} to issue #{3} in {4} on {5} at {6}.
-Issue: {7}
-Comment: {8}
-'''.format(
-    log['hours'], log['minutes'], log['commitType'], log['issueId'],
-    log['projectName'], log['date'], log['time'], log['issueName'], log['comment']))
-
-
 def show_hours(since_date):
   '''Compute the number of hours worked since a particular date (or in total-None)'''
   if not os.path.isfile(ACTIVITY_FILE):
@@ -188,82 +148,11 @@ def show_hours(since_date):
   hours = int(math.floor(total))
   minutes = int(math.ceil((total - hours) * 60))
   click.echo('-- Total: {0} hours, {1} minutes --'.format(hours, minutes))
-  
 
 
-@cmdmine.command()
-@click.option('--issue', '-i', type=int,
-  help='The ID of the issue to reference')
-@click.option('--project', '-p', type=str,
-  help='The shorthand name of the project to reference')
-@click.option('--delete', '-d', is_flag=True)
-@click.argument('macro_name')
-def macro(issue, project, delete, macro_name):
-  if not os.path.isfile(MACROS_FILE):
-    macros = {}
-  else:
-    try:
-      macros = json.loads(open(MACROS_FILE, 'r').read())
-    except Exception:
-      macros = {}
-  if delete:
-    if macro_name in macros.keys():
-      del macros[macro_name]
-      click.echo('Deleted {0} macro.'.format(macro_name))
-    else:
-      click.echo('No such macro: {0}.'.format(macro_name))
-  else:
-    macros[macro_name] = {'issue_id': issue, 'project_name': project}
-    click.echo('Registered macro {0} for project {1}, issue {2}.'.format(
-      macro_name, project, issue))
-  open(MACROS_FILE, 'w').write(json.dumps(macros))
-  click.echo('You now have {0} macros registered.'.format(len(macros.keys())))
+## ISSUE COMMANDS
 
-
-@cmdmine.command()
-@click.argument('what', type=click.Choice(['macros', 'logs', 'hours']))
-@click.option('--since', '-s', type=str,
-  help='Start date from which to start counting hours worked. Format is YYYY-MM-DD')
-def show(what, since):
-  if what == 'macros':
-    show_macros()
-  elif what == 'logs':
-    show_logs()
-  elif what == 'hours':
-    show_hours(since)
-
-
-@cmdmine.command()
-@click.argument('project', type=click.Choice(config['redmine-projects']))
-@click.option('--limit', '-l', default=20,
-  help='Limit the number of issues that will be reported')
-@click.option('--offset', '-o', default=0,
-  help='Offset from the first retrieved issue to report')
-def issues(project, limit, offset):
-  REDMINE = redmine_auth()
-  PROJECTS = build_projects(REDMINE)
-  matched_projects = [PROJECTS[name] for name in PROJECTS.keys() if project == name]
-  issues = []
-  longest_subject_length = 0
-  click.echo('Collecting issue information.')
-  for proj in matched_projects:
-    for issue in proj.issues:
-      issues.append(issue)
-  # Find the length of the longest subject name so we can nicely format the output
-  for issue in issues[offset : offset + limit + 1]:
-    subject_length = len(issue.subject)
-    if subject_length > longest_subject_length:
-      longest_subject_length = subject_length
-  longest_subject_length += 1
-  click.echo('') # Print a nice blank line before our gorgeous table
-  click.echo('ID     ' + 'Subject'.ljust(longest_subject_length) + ' Assigned to')
-  click.echo('----   ' + '-------'.ljust(longest_subject_length) + ' -----------')
-  for issue in issues[offset : offset + limit + 1]:
-    click.echo(u'{0} - {1} {2}'.format(
-      str(issue.id), (issue.subject + ' ').ljust(longest_subject_length, '-'), str(issue.assigned_to)))
-
-
-@cmdmine.command()
+@new.command()
 @click.argument('project', type=click.Choice(config['redmine-projects']))
 @click.option('--subject', '-s', type=str,
   help='A descriptive subject for the new task')
@@ -278,7 +167,7 @@ def issues(project, limit, offset):
 @click.option('--tracker', '-T', type=click.Choice(config['trackers']),
   default=config['default-tracker'],
   help='The name of the tracker to use for the task')
-def task(project, subject, priority, due, time, description, tracker):
+def issue(project, subject, priority, due, time, description, tracker):
   if subject is None:
     click.echo('No subject was provided for the task. Use the --subject or -s flag.')
     return
@@ -310,7 +199,179 @@ def task(project, subject, priority, due, time, description, tracker):
     tracker_name, project, subject, due_date_str, str(time)))
 
 
-@cmdmine.command()
+@update.command()
+@click.option('--macro', '-m', type=str,
+  help='The name of a macro referring to the issue to update')
+@click.option('--issue', '-i', type=int,
+  help='The ID of the issue to update')
+@click.option('--project', '-p', type=click.Choice(config['redmine-projects']),
+  help='The shorthand name of the project the issue to update belongs to')
+@click.option('--status', '-s', type=click.Choice(config['statuses']),
+  help='The new status for the issue')
+@click.option('--priority', '-P', type=click.Choice(config['priorities']),
+  help='The new priority for the issue')
+@click.option('--done', '-d', type=click.IntRange(0, 100),
+  help='The percentage of the task now complete')
+@click.option('--due', '-D', type=str,
+  help='A due date to assign to the issue, formatted YYYY-MM-DD')
+def issue(macro, issue, project, status, priority, done, due):
+  if macro is not None:
+    project, issue = get_issue_info(macro)
+  if (not project) or (not issue): # Either are empty or None
+    click.echo('No information available about the issue specified.')
+    return
+  if due is not None:
+    try:
+      datetime.datetime.strptime(due, '%Y-%m-%d')
+    except ValueError:
+      click.echo('The due date {0} is not properly formatted YYYY-MM-DD'.format(due))
+      return
+  REDMINE = redmine_auth()
+  args = {}
+  if status is not None: args['status_id'] = config['statuses'][status]
+  if priority is not None: args['priority_id'] = config['priorities'][priority]
+  if done is not None: args['done_ratio'] = done
+  if due is not None: args['due_date'] = due
+  today = datetime.date.today().strftime('%Y-%m-%d')
+  now = datetime.datetime.now().strftime('%H:%M')
+  try:
+    isubject = REDMINE.issue.get(issue).subject
+    log_activity(today, now, 0, 0, project, issue, isubject, 'Update', 'Updated issue')
+  except Exception:
+    click.echo('No issue with ID {0} exists. Aborting update.'.format(issue))
+    return
+  try:
+    REDMINE.issue.update(issue, **args)
+  except Exception as ex:
+    pass # Seriously, why do all write operations raise an exception despite working fine?
+  click.echo('Issue updated successfully.')
+
+
+@list.command()
+@click.argument('project', type=click.Choice(config['redmine-projects']))
+@click.option('--limit', '-l', default=20,
+  help='Limit the number of issues that will be reported')
+@click.option('--offset', '-o', default=0,
+  help='Offset from the first retrieved issue to report')
+def issues(project, limit, offset):
+  REDMINE = redmine_auth()
+  PROJECTS = build_projects(REDMINE)
+  matched_projects = [PROJECTS[name] for name in PROJECTS.keys() if project == name]
+  issues = []
+  longest_subject_length = 0
+  click.echo('Collecting issue information.')
+  for proj in matched_projects:
+    for issue in proj.issues:
+      issues.append(issue)
+  # Find the length of the longest subject name so we can nicely format the output
+  for issue in issues[offset : offset + limit + 1]:
+    subject_length = len(issue.subject)
+    if subject_length > longest_subject_length:
+      longest_subject_length = subject_length
+  longest_subject_length += 1
+  click.echo('') # Print a nice blank line before our gorgeous table
+  click.echo('ID     ' + 'Subject'.ljust(longest_subject_length) + ' Assigned to')
+  click.echo('----   ' + '-------'.ljust(longest_subject_length) + ' -----------')
+  for issue in issues[offset : offset + limit + 1]:
+    click.echo(u'{0} - {1} {2}'.format(
+      str(issue.id), (issue.subject + ' ').ljust(longest_subject_length, '-'), str(issue.assigned_to)))
+
+
+@delete.command()
+@click.option('--macro', '-m', type=str,
+  help='The name of a macro identifying the issue to close')
+@click.option('--project', '-p', type=click.Choice(config['redmine-projects']),
+  help='The shorthand name for the project that the issue to close belongs to')
+@click.option('--issue', '-i', type=int,
+  help='The ID of the issue to close- must be provided if a macro is not')
+def issue(macro, project, issue):
+  if macro is not None:
+    project, issue = get_issue_info(macro)
+  if (not project) and (not issue): # Both are empty or None
+    click.echo('No information available about the issue specified.')
+    return
+  REDMINE = redmine_auth()
+  today = datetime.date.today().strftime('%Y-%m-%d')
+  now = datetime.datetime.now().strftime('%H:%M')
+  try:
+    isubject = REDMINE.issue.get(issue).subject
+    log_activity(today, now, 0, 0, project, issue, isubject, 'Update', 'Closing issue')
+  except Exception:
+    click.echo('No issue with ID {0} exists. Aborting update.'.format(issue))
+    return
+  try:
+    REDMINE.issue.update(issue, status_id=config['closed-status'])
+  except Exception:
+    pass
+  click.echo('Issue closed successfully.')
+
+
+## MACRO COMMANDS
+
+@new.command()
+@click.option('--issue', '-i', type=int,
+  help='The ID of the issue to reference')
+@click.option('--project', '-p', type=str,
+  help='The shorthand name of the project to reference')
+@click.argument('macro_name')
+def macro(issue, project, macro_name):
+  if not os.path.isfile(MACROS_FILE):
+    macros = {}
+  else:
+    try:
+      macros = json.loads(open(MACROS_FILE, 'r').read())
+    except Exception:
+      macros = {}
+  macros[macro_name] = {'issue_id': issue, 'project_name': project}
+  click.echo('Registered macro {0} for project {1}, issue {2}.'.format(
+    macro_name, project, issue))
+  open(MACROS_FILE, 'w').write(json.dumps(macros))
+  click.echo('You now have {0} macros registered.'.format(len(macros.keys())))
+
+
+@delete.command()
+@click.argument('macro_name')
+def macro(macro_name):
+  try:
+    macros = json.loads(open(MACROS_FILE, 'r').read())
+    if macro_name in macros:
+      del macros[macro_name]
+      open(MACROS_FILE, 'w').write(json.dumps(macros))
+      click.echo('Deleted macro {0}.'.format(macro_name))
+    else:
+      click.echo('NO such macro {0}.'.format(macro_name))
+  except IOError:
+    click.echo('You do not have any macros registered yet.')
+
+@list.command()
+def macros():
+  if not os.path.isfile(MACROS_FILE):
+    click.echo('You currently have no macros registered.')
+    return
+  try:
+    macros = json.loads(open(MACROS_FILE, 'r').read()) 
+  except Exception:
+    click.echo('You currently have no macros registered.')
+    return
+  # Find the longest macro name and project name so we can format the output more nicely
+  l_macro_len = l_project_len = 0
+  for macro_name in macros.keys():
+    lmn = len(macro_name)
+    lpn = len(macros[macro_name]['project_name'])
+    l_macro_len = lmn if lmn > l_macro_len else l_macro_len
+    l_project_len = lpn if lpn > l_project_len else l_project_len
+  click.echo('{0} {1} Issue ID'.format('Macro'.ljust(l_macro_len), 'Project'.ljust(l_project_len)))
+  click.echo('{0} {1} {2}'.format('-----'.ljust(l_macro_len), '-------'.ljust(l_project_len), '--------'))
+  for macro_name in macros.keys():
+    click.echo('{0} {1} {2}'.format(
+      macro_name.ljust(l_macro_len),
+      macros[macro_name]['project_name'].ljust(l_project_len),
+      macros[macro_name]['issue_id']))
+
+
+## LOG COMMANDS
+
+@new.command()
 @click.argument('activity', type=click.Choice(config['activities']))
 @click.option('--project', '-p',
   help='The shorthand name of the project the issue belongs to')
@@ -361,116 +422,25 @@ def log(activity, project, issue, macro, hours, minutes, date, time, comments):
   click.echo('Comment: ' + str(comments))
 
 
-@cmdmine.command()
-@click.option('--macro', '-m', type=str,
-  help='The name of a macro referring to the issue to update')
-@click.option('--issue', '-i', type=int,
-  help='The ID of the issue to update')
-@click.option('--project', '-p', type=click.Choice(config['redmine-projects']),
-  help='The shorthand name of the project the issue to update belongs to')
-@click.option('--status', '-s', type=click.Choice(config['statuses']),
-  help='The new status for the issue')
-@click.option('--priority', '-P', type=click.Choice(config['priorities']),
-  help='The new priority for the issue')
-@click.option('--done', '-d', type=click.IntRange(0, 100),
-  help='The percentage of the task now complete')
-@click.option('--due', '-D', type=str,
-  help='A due date to assign to the issue, formatted YYYY-MM-DD')
-def update(macro, issue, project, status, priority, done, due):
-  if macro is not None:
-    project, issue = get_issue_info(macro)
-  if (not project) or (not issue): # Either are empty or None
-    click.echo('No information available about the issue specified.')
+@list.command()
+@click.option('--since', '-s', type=str,
+  help='Start date from which to start counting hours worked. Format is YYYY-MM-DD')
+def logs(since):
+  if since is not None:
+    show_hours(since)
     return
-  if due is not None:
-    try:
-      datetime.datetime.strptime(due, '%Y-%m-%d')
-    except ValueError:
-      click.echo('The due date {0} is not properly formatted YYYY-MM-DD'.format(due))
-      return
-  REDMINE = redmine_auth()
-  args = {}
-  if status is not None: args['status_id'] = config['statuses'][status]
-  if priority is not None: args['priority_id'] = config['priorities'][priority]
-  if done is not None: args['done_ratio'] = done
-  if due is not None: args['due_date'] = due
-  today = datetime.date.today().strftime('%Y-%m-%d')
-  now = datetime.datetime.now().strftime('%H:%M')
-  try:
-    isubject = REDMINE.issue.get(issue).subject
-    log_activity(today, now, 0, 0, project, issue, isubject, 'Update', 'Updated issue')
-  except Exception:
-    click.echo('No issue with ID {0} exists. Aborting update.'.format(issue))
+  if not os.path.isfile(ACTIVITY_FILE):
+    click.echo('No activities logged yet.')
     return
-  try:
-    REDMINE.issue.update(issue, **args)
-  except Exception as ex:
-    pass # Seriously, why do all write operations raise an exception despite working fine?
-  click.echo('Issue updated successfully.')
-
-
-@cmdmine.command()
-@click.option('--macro', '-m', type=str,
-  help='The name of a macro identifying the issue to close')
-@click.option('--project', '-p', type=click.Choice(config['redmine-projects']),
-  help='The shorthand name for the project that the issue to close belongs to')
-@click.option('--issue', '-i', type=int,
-  help='The ID of the issue to close- must be provided if a macro is not')
-def close(macro, project, issue):
-  if macro is not None:
-    project, issue = get_issue_info(macro)
-  if (not project) and (not issue): # Both are empty or None
-    click.echo('No information available about the issue specified.')
-    return
-  REDMINE = redmine_auth()
-  today = datetime.date.today().strftime('%Y-%m-%d')
-  now = datetime.datetime.now().strftime('%H:%M')
-  try:
-    isubject = REDMINE.issue.get(issue).subject
-    log_activity(today, now, 0, 0, project, issue, isubject, 'Update', 'Closing issue')
-  except Exception:
-    click.echo('No issue with ID {0} exists. Aborting update.'.format(issue))
-    return
-  try:
-    REDMINE.issue.update(issue, status_id=config['closed-status'])
-  except Exception:
-    pass
-  click.echo('Issue closed successfully.')
-
-
-@cmdmine.command()
-@click.option('--macro', '-m', type=str,
-  help='The name of a macro identifying the issue to reject')
-@click.option('--project', '-p', type=str,
-  help='The shorthand name for the project that the issue to reject belongs to')
-@click.option('--issue', '-i', type=int,
-  help='The ID of the issue to reject- must be provided if a macro is not')
-@click.option('--comment', '-c', type=str,
-  help='A comment explaining why the issue is being rejected')
-def reject(macro, project, issue, comment):
-  if macro is not None:
-    project, issue = get_issue_info(macro)
-  if (not project) and (not issue): # Both are empty or None
-    click.echo('No information available about the issue specified.')
-    return
-  REDMINE = redmine_auth()
-  try:
-    subject = REDMINE.issue.get(issue).subject
-    now = datetime.datetime.now()
-    log_activity(
-      now.strftime('%Y-%m-%d'), now.strftime('%H:%M'), 0, 0,
-      project, issue, subject, 'Reject', 'Rejected issue')
-  except Exception:
-    click.echo('No issue with ID {0} exists. Aborting reject.'.format(issue))
-    return
-  if comment is None or comment == '':
-    comment = 'No reason provided.'
-  try:
-    REDMINE.issue.update(issue, status_id=config['rejected-status'], description=comment)
-  except Exception as ex:
-    click.echo(ex.message)
-    pass
-  click.echo('Issue status set to rejected.')
+  logs = json.loads(open(ACTIVITY_FILE, 'r').read())
+  for log in logs:
+    click.echo('''
+Committed {0} hours, {1} minutes of {2} to issue #{3} in {4} on {5} at {6}.
+Issue: {7}
+Comment: {8}
+'''.format(
+    log['hours'], log['minutes'], log['commitType'], log['issueId'],
+    log['projectName'], log['date'], log['time'], log['issueName'], log['comment']))
 
 
 if __name__ == '__main__':
