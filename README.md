@@ -52,96 +52,42 @@ cmdmine maintains a log for you in `$HOME/.cmdmine/activities.log` when you log 
 the `log` command so that you can easily create reports for others or simply to remind
 yourself what you've been doing without having to hunt around on redmine.
 
-### task
+There are three resources that cmdmine manages for you.
 
-    cmdmine task [OPTIONS] PROJECT
+1. Issues - Tasks on redmine for you to complete
+2. Logs   - Recordsof your time committed to issues and updates to issues
+3. Macros - Shortcut keywords you can use to identify issues instead of id numbers or full names
 
-The `task` command is used to create a new task for a given project, which you will later
-log hours for work on.
+Note that, for a given resource, all the commands you'll use to do something will be of the form
 
-The `PROJECT` parameter must be one of the shorthand names of a project (i.e. one of the
-keys) in the `redmine-projects` mapping in your configuration file.
+    cmdmine <action> <resource> [-flag1 value1] [-flag2 value2] [...]
 
-### log
+### Issues
 
-    cmdmine log [OPTIONS] ACTIVITY
+Function | Description
+---------|------------
+new      | Create a new issue in a project
+list     | Show a list of existing issues in a project
+update   | Update an issue's information
+delete   | Close an issue
 
-The `log` command is used to log some number of hours and minutes of work on a given issue.
-The issue (task) to log time to can be identified either by the issue's ID (`-i` or `--issue`)
-or by a macro name.  If an ID is provided, a project name (`-p` or `--project`) can also be
-provided to be included in the log file, but it is not required.  If a macro name is provided
-(`-m` or `--macro`), it takes presedence over an issue id.  Thus it typically makes sense to
-provide only one.
+### Logs
 
-This command accepts two time values, hours (`-H` or `--hours`), and minutes (`-M` or `--minutes`).
-It is recommended that you use both of these flags instead of trying to compute the fractional
-number of hours yourself.
+Function | Description
+---------|------------
+new      | Create a new time log, reporting work done
+list     | Show logs created until now
+update   | Not implemented
+delete   | Not implemented
 
-The default behavior is to log time on the current day.  In the case that you would like to
-log time for another date, the date (`-d` or `--date`) flag can be used. The format for this
-option is YYYY-MM-DD.  Likewise, the log file will have the current time logged with a 24-hour
-time format of HH:MM.  You can provide an alternative time with the time (`-t` or `--time`) option.
+### Macros
 
-`log` automatically updates a log file with the activity you enter, so that you can retrieve
-a list of logged work without tracking it down on redmine.  More about this in `show`.
-
-### issues
-
-    cmdmine issues [OPTIONS] PROJECT
-
-The `issues` command is used to quickly obtain a list of issues (tasks) in a given project.
-Like with the `task` command, `PROJECT` is a shorthand project name- a key in the `redmine-projects`
-mapping in your config.  This command limits the amount of output by default, so that you don't end
-up with a long list of ancient tasks when you might only want to see the first few.  To override
-this behavior, you can use the offset (`-o` or `--offset`) to start listing from an offset from the
-most recently created issue and the limit (`-l` or `--limit`) to change the maximum number of
-issues to list.
-
-### macro
-
-    cmdmine macro [OPTIONS] MACRO_NAME
-
-The `macro` command is used to associate a name with a particular issue.  Using macros makes it
-easier to reference issues that you have been working on without having to remember obscure
-issue IDs or frequently list the issues in a project.  The issue (`-i` or `--issue`) option
-takes the ID of the issue to create a macro for, and you can use the project (`-p` or `--project`)
-option to also provide the project name the issue belongs to in order to make your logs appear
-nicer.
-
-You can delete an existing macro instead of creating a new one by adding the `-d` or `--delete` flag.
-
-    cmdmine macro -d <macro_name>
-
-### show
-
-    cmdmine show WHAT
-
-The `show` command is used to output locally stored information.  Currently, that can be either
-
-1. `macros` - The list of currently recorded macros along with their associated issue IDs
-2. `logs`   - The content of the log file storing information about your time logs
-3. `hours`  - The total number of recorded hours of work, optionally since a particular date
-
-### update
-
-    cmdmine update [OPTIONS]
-
-The `update` command is used to update the attributes of an existing issue.  It can be used to
-set the status, priority, percentage complete, and due date of an issue.  Like most commands,
-you can specify the issue to update using either the macro (`-m` or `--macro`) option or the
-issue ID (`-i` or `--issue`) option.  If you choose to use the issue option, you can also
-provide the project name shorthand (`-p` or `--project`) to make the resulting log entry nicer.
-
-### close
-
-    cmdmine close [OPTIONS]
-
-The `close` command is used to update an issue's status to `closed`.  
-You can specify the issue to update using either the macro (`-m` or `--macro`) option or the
-issue ID (`-i` or `--issue`) option.  If you choose to use the issue option, you can also
-provide the project name shorthand (`-p` or `--project`) to make the resulting log entry nicer.
-
-Note that this command does not set the percentage done to 100%.
+Function | Description
+---------|------------
+new      | Create a new macro for an issue
+list     | Show all recorded macros
+update   | Not implemented
+delete   | Delete a macro no longer used
 
 ## Configuration
 
