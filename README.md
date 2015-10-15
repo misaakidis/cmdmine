@@ -22,10 +22,9 @@ you will have to install the Python libraries that cmdmine depends on to work.
 
     sudo pip install python-redmine click
 
-Finally, you can run the install script to automatically install cmdmine system-wide. This must be done
-as root.
+Finally, you can run the install script to automatically install cmdmine for your user.
 
-    sudo sh install.sh
+    sh install.sh
 
 With that, you're done! You can now start using cmdmine like a standard Unix utility.
 

@@ -1,24 +1,24 @@
 #! /bin/bash
 
-if [ "$(whoami)" != "root" ]; then
-  echo -e "This install script must be run as root. Please try again with 'sudo $0'"
-  exit 0;
-fi
+chmod +x ./cmdmine
 
 DIR=$HOME/.cmdmine
 
 if [ ! -d "$DIR" ]; then
   mkdir $DIR
   touch $DIR/macros.dat
-  chmod a+rw $DIR/macros.dat
   touch $DIR/activities.log
-  chmod a+rw $DIR/activities.log
+  cp cmdmine $DIR/cmdmine
   echo "Created $DIR";
+
+  if [ -d "$HOME/bin" ]; then
+    ln -s $DIR/cmdmine $HOME/bin/cmdmine
+  else
+    echo "export PATH=$DIR:\$PATH" >> $HOME/.profile
+    source $HOME/.profile
+  fi
 fi
 
 cp config.json $DIR
-chmod a+rw $DIR/config.json
-chmod +x cmdmine
-cp cmdmine /usr/bin
 
 echo "Installation complete!"
