@@ -195,8 +195,9 @@ def issue(project, subject, priority, due, time, description, tracker):
     log_activity(today, now, 0, 0, project, issue.id, subject, 'Create', 'Created new task')
   except Exception:
     pass # This call successfully creates an issue but throws some weird exception anyway. Dunno.
-  click.echo('Created new {0} in project {1}.\n{2}\nDue date: {3}, Estimated time (hours): {4}.'.format(
+  click.echo('Created new {0} in project {1}: {2}\nDue date: {3}, Estimated time (hours): {4}.'.format(
     tracker_name, project, subject, due_date_str, str(time)))
+  click.echo('New issue id: {0}'.format(issue.id))
 
 
 @update.command()
@@ -413,7 +414,7 @@ def log(activity, project, issue, macro, hours, minutes, date, time, comments):
     activity_id=config['activities'][activity], comments=str(comments))
   try:
     time_entry.save()
-  except Exception:
+  except Exception as e:
     pass # This works but for some reason throws an exception like saving a task does. Dunno why.
   issue_subject = REDMINE.issue.get(issue).subject
   log_activity(date, time, hours, minutes, project, issue, issue_subject, activity, comments)
