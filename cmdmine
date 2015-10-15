@@ -41,6 +41,11 @@ def delete():
 
 ## HELPER FUNCTIONS
 
+def confirmed():
+  '''Ask the user if they are sure they want to continue''' 
+  answer = raw_input('Are you sure you want to proceed? [yes or no]: ').lower()
+  return answer.startswith('y')
+
 def load_configuration():
   '''Load the program's configuration'''
   if not os.path.isfile(CONFIG_FILE):
@@ -190,13 +195,17 @@ def issue(project, subject, priority, due, time, description, tracker):
     status_id=config['new-task-status'], priority_id=priority, assigned_to_id=config['assignee-me'],
     start_date=today, due_date=due, estimated_hours=time,
     watcher_user_ids=[], parent_issue_id=-1, done_ratio=0, custom_fields=[], uploads=[])
+  click.echo('Cmdmine is about to make the following change.') 
+  click.echo('Create new {0} in project {1}: {2}\nDue date: {3}, Estimated time (hours): {4}.'.format(
+    tracker_name, project, subject, due_date_str, str(time)))
+  if not confirmed():
+    click.echo('Aborting')
+    return
   try:
     issue.save()
     log_activity(today, now, 0, 0, project, issue.id, subject, 'Create', 'Created new task')
   except Exception:
     pass # This call successfully creates an issue but throws some weird exception anyway. Dunno.
-  click.echo('Created new {0} in project {1}: {2}\nDue date: {3}, Estimated time (hours): {4}.'.format(
-    tracker_name, project, subject, due_date_str, str(time)))
   click.echo('New issue id: {0}'.format(issue.id))
 
 
@@ -235,6 +244,9 @@ def issue(macro, issue, project, status, priority, done, due):
   if due is not None: args['due_date'] = due
   today = datetime.date.today().strftime('%Y-%m-%d')
   now = datetime.datetime.now().strftime('%H:%M')
+  if not confirmed():
+    click.echo('Aborting.')
+    return
   try:
     isubject = REDMINE.issue.get(issue).subject
     log_activity(today, now, 0, 0, project, issue, isubject, 'Update', 'Updated issue')
@@ -299,6 +311,10 @@ def issue(macro, project, issue):
     log_activity(today, now, 0, 0, project, issue, isubject, 'Update', 'Closing issue')
   except Exception:
     click.echo('No issue with ID {0} exists. Aborting update.'.format(issue))
+    return
+  click.echo('About to delete task: ' + isubject)
+  if not confirmed():
+    click.echo('Aborting.')
     return
   try:
     REDMINE.issue.update(issue, status_id=config['closed-status'])
@@ -412,15 +428,20 @@ def log(activity, project, issue, macro, hours, minutes, date, time, comments):
   time_entry = REDMINE.time_entry.create(
     issue_id=issue, spent_on=date, hours=time_spent,
     activity_id=config['activities'][activity], comments=str(comments))
+  click.echo('Cmdmine is about to make the following change.')
+  click.echo('Log {0} hours of work on issue {1}, project {2} at {3}.'.format(
+    time_spent, issue, project, date))
+  click.echo('Comment: ' + str(comments))
+  if not confirmed():
+    click.echo('Aborting')
+    return
   try:
     time_entry.save()
   except Exception as e:
     pass # This works but for some reason throws an exception like saving a task does. Dunno why.
   issue_subject = REDMINE.issue.get(issue).subject
   log_activity(date, time, hours, minutes, project, issue, issue_subject, activity, comments)
-  click.echo('Logged {0} hours of work on issue {1}, project {2} at {3}.'.format(
-    time_spent, issue, project, date))
-  click.echo('Comment: ' + str(comments))
+  click.echo('Logged successfully.')
 
 
 @list.command()
