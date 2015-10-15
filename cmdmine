@@ -67,6 +67,7 @@ def load_configuration():
 CONFIG_FILE = os.sep.join([os.environ['HOME'], '.cmdmine', 'config.json'])
 config = load_configuration()
 
+
 def redmine_auth():
   '''Authenticate with and return a configured redmine object'''
   click.echo('Authenticating with redmine.')
@@ -162,7 +163,7 @@ def show_hours(since_date):
   help='A descriptive subject for the new task')
 @click.option('--priority', '-p', type=click.Choice(config['priorities']), default=config['default-priority'],
   help='The name of the priority to assign to the new task')
-@click.option('--parent', '-P', type=int,
+@click.option('--parent', '-R', type=int,
     help='The ID of the parent task')
 @click.option('--due', '-d', type=str,
   help='The due date of the task. Defaults to none. Format is YYYY-MM-DD')
@@ -229,7 +230,9 @@ def issue(project, subject, priority, parent, due, time, description, tracker):
   help='The percentage of the task now complete')
 @click.option('--due', '-D', type=str,
   help='A due date to assign to the issue, formatted YYYY-MM-DD')
-def issue(macro, issue, project, status, priority, done, due):
+@click.option('--parent', '-R', type=int,
+    help='The ID of the parent task')
+def issue(macro, issue, project, status, priority, done, due, parent):
   if macro is not None:
     project, issue = get_issue_info(macro)
   if (not project) or (not issue): # Either are empty or None
@@ -241,27 +244,29 @@ def issue(macro, issue, project, status, priority, done, due):
     except ValueError:
       click.echo('The due date {0} is not properly formatted YYYY-MM-DD'.format(due))
       return
-  REDMINE = redmine_auth()
   args = {}
   if status is not None: args['status_id'] = config['statuses'][status]
   if priority is not None: args['priority_id'] = config['priorities'][priority]
   if done is not None: args['done_ratio'] = done
   if due is not None: args['due_date'] = due
+  if parent is not None: args['parent_issue_id'] = parent
   today = datetime.date.today().strftime('%Y-%m-%d')
   now = datetime.datetime.now().strftime('%H:%M')
-  if not confirmed():
-    click.echo('Aborting.')
-    return
+  REDMINE = redmine_auth()
   try:
     isubject = REDMINE.issue.get(issue).subject
-    log_activity(today, now, 0, 0, project, issue, isubject, 'Update', 'Updated issue')
   except Exception:
     click.echo('No issue with ID {0} exists. Aborting update.'.format(issue))
+    return
+  click.echo('Cmdmine is about to update issue: {0}'.format(isubject)) 
+  if not confirmed():
+    click.echo('Aborting.')
     return
   try:
     REDMINE.issue.update(issue, **args)
   except Exception as ex:
     pass # Seriously, why do all write operations raise an exception despite working fine?
+  log_activity(today, now, 0, 0, project, issue, isubject, 'Update', 'Updated issue')
   click.echo('Issue updated successfully.')
 
 
